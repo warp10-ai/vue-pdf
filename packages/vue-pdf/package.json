@@ -1,6 +1,6 @@
 {
   "name": "@warp10-pauloschussler/vue-pdf",
-  "version": "1.11.3",
+  "version": "1.0.3",
   "description": "PDF component for Vue 3",
   "author": {
     "name": "Aldo Hernandez",
