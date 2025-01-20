@@ -1,7 +1,7 @@
 {
-  "name": "vue-pdf-monorepo",
+  "name": "@pauloschussler/vue-pdf",
   "version": "1.0.0",
-  "description": "vue-pdf-monorepo",
+  "description": "Fork of vue-pdf-monorepo with custom modifications",
   "workspaces": [
     "packages/*",
     "docs",
@@ -13,10 +13,26 @@
     "test": "npm run --prefix tests test",
     "build": "npm run test && npm run --prefix packages/vue-pdf build",
     "build:docs": "npm run --prefix packages/vue-pdf build:lib && npm run --prefix docs build",
-    "lint:fix": "eslint --fix ."
+    "lint:fix": "eslint --fix .",
+    "prepublishOnly": "npm run build"
   },
   "dependencies": {
     "@rushstack/eslint-patch": "^1.10.3",
     "@vue/eslint-config-typescript": "^13.0.0"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pauloschussler/vue-pdf.git"
+  },
+  "keywords": [
+    "vue",
+    "pdf",
+    "viewer"
+  ],
+  "author": "Paulo Schussler",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/pauloschussler/vue-pdf/issues"
+  },
+  "homepage": "https://github.com/pauloschussler/vue-pdf#readme"
 }
