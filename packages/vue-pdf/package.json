@@ -1,19 +1,19 @@
 {
   "name": "@warp10-pauloschussler/vue-pdf",
-  "version": "1.0.3",
+  "version": "1.0.5",
   "description": "PDF component for Vue 3",
   "author": {
-    "name": "Aldo Hernandez",
-    "url": "https://github.com/pauloschussler"
+    "name": "Paulo Schussler",
+    "url": "https://github.com/warp10-pauloschussler"
   },
   "license": "MIT",
-  "homepage": "https://github.com/pauloschussler/vue-pdf/",
+  "homepage": "https://github.com/warp10-pauloschussler/vue-pdf/",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/pauloschussler/vue-pdf.git"
+    "url": "git+https://github.com/warp10-pauloschussler/vue-pdf.git"
   },
   "bugs": {
-    "url": "https://github.com/pauloschussler/vue-pdf/issues"
+    "url": "https://github.com/warp10-pauloschussler/vue-pdf/issues"
   },
   "keywords": [
     "pdf",
