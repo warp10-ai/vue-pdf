@@ -3,7 +3,7 @@
 ```vue
 <script setup>
 import { ref } from 'vue'
-import { VuePDF, usePDF } from '@tato30/vue-pdf'
+import { VuePDF, usePDF } from '@warp10-pauloschussler/vue-pdf'
 
 const { pdf } = usePDF('/14.pdf')
 

@@ -1,6 +1,10 @@
-import { resolve } from "node:url";
-import { defineConfig, mergeConfig } from 'vitest/config';
+import { fileURLToPath } from "node:url";
+import path from "node:path";
+import { defineConfig, mergeConfig } from "vitest/config";
 import commonConfig from "../vite.config";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export default mergeConfig(
   commonConfig,
@@ -8,14 +12,20 @@ export default mergeConfig(
     test: {
       browser: {
         enabled: true,
-        name: "firefox",
+        name: "chrome",
         headless: true,
+      },
+      deps: {
+        inline: ["@warp10-pauloschussler/vue-pdf"],
       },
     },
     resolve: {
       alias: {
-        "@tato30/vue-pdf": resolve(__dirname, "packages/vue-pdf/src"),
+        "@warp10-pauloschussler/vue-pdf": path.resolve(
+          __dirname,
+          "../packages/vue-pdf"
+        ),
       },
-    }
+    },
   })
 );

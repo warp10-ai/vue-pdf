@@ -1,6 +1,6 @@
 <!-- eslint-disable no-console -->
 <script setup lang="ts">
-import { VuePDF, usePDF } from '@tato30/vue-pdf';
+import { VuePDF, usePDF } from '@warp10-pauloschussler/vue-pdf';
 import { ref } from 'vue';
 
 import 'pdfjs-dist/web/pdf_viewer.css';

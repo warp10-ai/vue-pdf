@@ -9,7 +9,7 @@ export default mergeConfig(
     build: {
       lib: {
         entry: resolve(__dirname, './src/index.ts'),
-        name: '@tato30/vue-pdf',
+        name: '@warp10-pauloschussler/vue-pdf',
         fileName: 'index',
       },
       rollupOptions: {

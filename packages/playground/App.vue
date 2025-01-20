@@ -2,7 +2,7 @@
 <!-- Use this component to play with the main components -->
 <script setup lang="ts">
 import pdf14 from "@samples/45.pdf";
-import { VuePDF, usePDF } from "@tato30/vue-pdf";
+import { VuePDF, usePDF } from "@warp10-pauloschussler/vue-pdf";
 import { ref } from "vue";
 
 const { pdf } = usePDF(

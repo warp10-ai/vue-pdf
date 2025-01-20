@@ -7,7 +7,7 @@
     "build": "vitepress build --clean-temp --clean-cache ."
   },
   "dependencies": {
-    "@tato30/vue-pdf": "*"
+    "@warp10-pauloschussler/vue-pdf": "*"
   },
   "devDependencies": {
     "sass": "^1.77.2",

@@ -1,5 +1,5 @@
 {
-  "name": "@pauloschussler/vue-pdf",
+  "name": "@warp10-pauloschussler/vue-pdf",
   "version": "1.0.0",
   "description": "Fork of vue-pdf-monorepo with custom modifications",
   "workspaces": [

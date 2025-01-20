@@ -4,7 +4,7 @@
 <script setup>
 import { ref, triggerRef, watchEffect } from 'vue'
 
-import { VuePDF, usePDF } from '@tato30/vue-pdf'
+import { VuePDF, usePDF } from '@warp10-pauloschussler/vue-pdf'
 
 import ChaptersList from './ChaptersList.vue'
 

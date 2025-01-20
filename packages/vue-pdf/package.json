@@ -1,19 +1,19 @@
 {
-  "name": "@tato30/vue-pdf",
+  "name": "@warp10-pauloschussler/vue-pdf",
   "version": "1.11.3",
   "description": "PDF component for Vue 3",
   "author": {
     "name": "Aldo Hernandez",
-    "url": "https://github.com/TaTo30"
+    "url": "https://github.com/pauloschussler"
   },
   "license": "MIT",
-  "homepage": "https://github.com/TaTo30/vue-pdf/",
+  "homepage": "https://github.com/pauloschussler/vue-pdf/",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/TaTo30/vue-pdf.git"
+    "url": "git+https://github.com/pauloschussler/vue-pdf.git"
   },
   "bugs": {
-    "url": "https://github.com/TaTo30/vue-pdf/issues"
+    "url": "https://github.com/pauloschussler/vue-pdf/issues"
   },
   "keywords": [
     "pdf",

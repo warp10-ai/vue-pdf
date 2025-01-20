@@ -10,11 +10,11 @@ VuePDF is a **client-side** component for **Vue 3** that allows you to flexibly 
 
 ::: code-group
 ```sh [npm]
-npm i @tato30/vue-pdf
+npm i @warp10-pauloschussler/vue-pdf
 ```
 
 ```sh [yarn]
-yarn add @tato30/vue-pdf
+yarn add @warp10-pauloschussler/vue-pdf
 ```
 :::
 
@@ -24,7 +24,7 @@ The most basic usage is as simple as import the `VuePDF` and `usePDF` and use th
 
 ```vue
 <script setup>
-import { VuePDF, usePDF } from '@tato30/vue-pdf'
+import { VuePDF, usePDF } from '@warp10-pauloschussler/vue-pdf'
 
 const { pdf } = usePDF('sample.pdf')
 </script>
@@ -38,12 +38,12 @@ const { pdf } = usePDF('sample.pdf')
 
 ### Text and Annotations
 
-This component supports text selection and annotation interaction by enabling them with `text-layer` and `annotation-layer` props respectively, but for this layers renders correctly is necessary set some `css` styles, it can be done by importing default styles from `@tato30/vue-pdf/style.css`.
+This component supports text selection and annotation interaction by enabling them with `text-layer` and `annotation-layer` props respectively, but for this layers renders correctly is necessary set some `css` styles, it can be done by importing default styles from `@warp10-pauloschussler/vue-pdf/style.css`.
 
 ```vue
 <script setup>
-import { VuePDF, usePDF } from '@tato30/vue-pdf'
-import '@tato30/vue-pdf/style.css'
+import { VuePDF, usePDF } from '@warp10-pauloschussler/vue-pdf'
+import '@warp10-pauloschussler/vue-pdf/style.css'
 
 const { pdf } = usePDF('sample.pdf')
 </script>
@@ -68,8 +68,8 @@ XFA forms also can be supported by enabling them from `usePDF`.
 
 ```vue
 <script setup>
-import { VuePDF, usePDF } from '@tato30/vue-pdf'
-import '@tato30/vue-pdf/style.css'
+import { VuePDF, usePDF } from '@warp10-pauloschussler/vue-pdf'
+import '@warp10-pauloschussler/vue-pdf/style.css'
 
 const { pdf } = usePDF({
   url: '/xfa.pdf',
@@ -129,7 +129,7 @@ This package embed and configure the `pdf.js` *worker* for you but in case you n
 <script setup lang="ts">
 import * as PDFJS from 'pdfjs-dist'; // [!code ++]
 import LegacyWorker from 'pdfjs-dist/legacy/build/pdf.worker.min?url'; // [!code ++]
-import { VuePDF, usePDF } from '@tato30/vue-pdf';
+import { VuePDF, usePDF } from '@warp10-pauloschussler/vue-pdf';
 
 PDFJS.GlobalWorkerOptions.workerSrc = LegacyWorker // [!code ++]
 
@@ -176,7 +176,7 @@ Any idea, suggestion or contribution to the code or documentation are very welco
 
 ```sh
 # Clone the repository
-git clone https://github.com/TaTo30/vue-pdf.git
+git clone https://github.com/pauloschussler/vue-pdf.git
 # Change to code folder
 cd vue-pdf
 # Install node_modules

@@ -2,7 +2,7 @@
 
 ```vue
 <script setup>
-import { VuePDF, usePDF } from '@tato30/vue-pdf'
+import { VuePDF, usePDF } from '@warp10-pauloschussler/vue-pdf'
 import { ref } from 'vue'
 
 const pdfSources = [

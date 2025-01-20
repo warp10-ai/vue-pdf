@@ -1,22 +1,22 @@
 <div align="center">
-  <img width=250 src="https://raw.githubusercontent.com/TaTo30/vue-pdf/master/samples/logo.png" />
+  <img width=250 src="https://raw.githubusercontent.com/pauloschussler/vue-pdf/master/samples/logo.png" />
   <h1>VuePDF</h1>
 </div>
 
 <p>
-  <a href="https://www.npmjs.com/package/@tato30/vue-pdf" target="_blank">
-    <img src="https://img.shields.io/npm/v/@tato30/vue-pdf?style=flat-square" />
+  <a href="https://www.npmjs.com/package/@warp10-pauloschussler/vue-pdf" target="_blank">
+    <img src="https://img.shields.io/npm/v/@warp10-pauloschussler/vue-pdf?style=flat-square" />
   </a>
-  <a href="https://www.npmjs.com/package/@tato30/vue-pdf" target="_blank" >
-    <img src="https://img.shields.io/npm/dw/@tato30/vue-pdf?style=flat-square" />
+  <a href="https://www.npmjs.com/package/@warp10-pauloschussler/vue-pdf" target="_blank" >
+    <img src="https://img.shields.io/npm/dw/@warp10-pauloschussler/vue-pdf?style=flat-square" />
   </a>
   <a href="./LICENSE">
-    <img src="https://img.shields.io/npm/l/@tato30/vue-pdf?style=flat-square" />
+    <img src="https://img.shields.io/npm/l/@warp10-pauloschussler/vue-pdf?style=flat-square" />
   </a>
 </p>
 
 <div align="center">
-  <h2><a href="https://tato30.github.io/vue-pdf/">📖Documentation</a></h2>
+  <h2><a href="https://pauloschussler.github.io/vue-pdf/">📖Documentation</a></h2>
 </div>
 
 # Introduction
@@ -26,8 +26,8 @@ VuePDF is a **client-side** component for **Vue 3** that allows you to flexibly 
 ## Installation
 
 ```sh
-npm i @tato30/vue-pdf
-yarn add @tato30/vue-pdf
+npm i @warp10-pauloschussler/vue-pdf
+yarn add @warp10-pauloschussler/vue-pdf
 ```
 
 ## Basic Usage
@@ -36,7 +36,7 @@ The most basic usage is as simple as import the `VuePDF` and `usePDF` and use th
 
 ```vue
 <script setup>
-import { VuePDF, usePDF } from '@tato30/vue-pdf'
+import { VuePDF, usePDF } from '@warp10-pauloschussler/vue-pdf'
 
 const { pdf } = usePDF('sample.pdf')
 </script>
@@ -50,12 +50,12 @@ const { pdf } = usePDF('sample.pdf')
 
 ### Text and Annotations
 
-This component supports text selection and annotation interaction by enabling them with `text-layer` and `annotation-layer` props respectively, but for this layers renders correctly is necessary set some `css` styles, it can be done by importing default styles from `@tato30/vue-pdf/style.css`.
+This component supports text selection and annotation interaction by enabling them with `text-layer` and `annotation-layer` props respectively, but for this layers renders correctly is necessary set some `css` styles, it can be done by importing default styles from `@warp10-pauloschussler/vue-pdf/style.css`.
 
 ```vue
 <script setup>
-import { VuePDF, usePDF } from '@tato30/vue-pdf'
-import '@tato30/vue-pdf/style.css'
+import { VuePDF, usePDF } from '@warp10-pauloschussler/vue-pdf'
+import '@warp10-pauloschussler/vue-pdf/style.css'
 
 const { pdf } = usePDF('sample.pdf')
 </script>
@@ -70,8 +70,8 @@ XFA forms also can be supported by enabling them from `usePDF`.
 
 ```vue
 <script setup>
-import { VuePDF, usePDF } from '@tato30/vue-pdf'
-import '@tato30/vue-pdf/style.css'
+import { VuePDF, usePDF } from '@warp10-pauloschussler/vue-pdf'
+import '@warp10-pauloschussler/vue-pdf/style.css'
 
 const { pdf } = usePDF({
   url: '/xfa.pdf',
@@ -127,7 +127,7 @@ This package embed and configure the `pdf.js` *worker* for you but in case you n
 <script setup lang="ts">
 + import * as PDFJS from 'pdfjs-dist'; 
 + import LegacyWorker from 'pdfjs-dist/legacy/build/pdf.worker.min?url'; 
-import { VuePDF, usePDF } from '@tato30/vue-pdf';
+import { VuePDF, usePDF } from '@warp10-pauloschussler/vue-pdf';
 
 + PDFJS.GlobalWorkerOptions.workerSrc = LegacyWorker 
 
@@ -175,7 +175,7 @@ Any idea, suggestion or contribution to the code or documentation are very welco
 
 ```sh
 # Clone the repository
-git clone https://github.com/TaTo30/vue-pdf.git
+git clone https://github.com/pauloschussler/vue-pdf.git
 # Change to code folder
 cd vue-pdf
 # Install node_modules
@@ -188,4 +188,4 @@ npm run dev:docs
 
 ## Looking for maintainers and current status
 
-Refer to this announcement for more details: https://github.com/TaTo30/vue-pdf/discussions/128 
+Refer to this announcement for more details: https://github.com/pauloschussler/vue-pdf/discussions/128 

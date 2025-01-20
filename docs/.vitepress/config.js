@@ -16,7 +16,7 @@ export default {
     },
     resolve: {
       alias: {
-        "@tato30/vue-pdf": resolve(__dirname, "../../packages/vue-pdf/dist")
+        "@warp10-pauloschussler/vue-pdf": resolve(__dirname, "../../packages/vue-pdf/dist")
       },
     },
   },
@@ -28,12 +28,12 @@ export default {
   themeConfig: {
     logo: "/logo.png",
     editLink: {
-      pattern: "https://github.com/TaTo30/vue-pdf/edit/master/docs/:path",
+      pattern: "https://github.com/pauloschussler/vue-pdf/edit/master/docs/:path",
     },
     socialLinks: [
       {
         icon: "github",
-        link: "https://github.com/TaTo30/vue-pdf",
+        link: "https://github.com/pauloschussler/vue-pdf",
       },
     ],
     search: {
@@ -66,11 +66,11 @@ export default {
         items: [
           {
             text: "Changelog",
-            link: "https://github.com/TaTo30/vue-pdf/releases",
+            link: "https://github.com/pauloschussler/vue-pdf/releases",
           },
           {
             text: "Contributing",
-            link: "https://github.com/TaTo30/vue-pdf#contributing",
+            link: "https://github.com/pauloschussler/vue-pdf#contributing",
           },
         ],
       },
