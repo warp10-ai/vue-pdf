@@ -16,6 +16,7 @@ const props = defineProps<{
   highlightText?: string | string[];
   highlightOptions?: HighlightOptions;
   hightlightPages?: number[];
+  customHighlightClass?: string;
 }>();
 
 const emit = defineEmits<{
@@ -59,7 +60,12 @@ async function findAndHighlight(reset = false) {
       textContent!,
       getHighlightOptionsWithDefaults()
     );
-    highlightMatches(matches, textContent!, textDivs);
+    highlightMatches(
+      matches,
+      textContent!,
+      textDivs,
+      props.customHighlightClass || "highlight"
+    );
     emit("highlight", {
       matches,
       textContent,
