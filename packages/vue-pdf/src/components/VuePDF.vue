@@ -57,6 +57,7 @@ const props = withDefaults(
     highlightText?: string | string[];
     highlightOptions?: HighlightOptions;
     highlightPages?: number[];
+    customHighlightClass?: string;
   }>(),
   {
     page: 1,
@@ -102,6 +103,7 @@ const tlayerProps = computed(() => {
     highlightText: props.highlightText,
     highlightOptions: props.highlightOptions,
     highlightPages: props.highlightPages,
+    customHighlightClass: props.customHighlightClass,
   };
 });
 
