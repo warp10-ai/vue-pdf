@@ -2,6 +2,10 @@
   "name": "@warp10-pauloschussler/vue-pdf",
   "version": "1.0.0",
   "description": "Fork of vue-pdf-monorepo with custom modifications",
+  "files": [
+    "dist",
+    "src"
+  ],
   "workspaces": [
     "packages/*",
     "docs",
