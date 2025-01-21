@@ -20,6 +20,9 @@
     "lint:fix": "eslint --fix .",
     "prepublishOnly": "npm run build"
   },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/"
+  },
   "dependencies": {
     "@rushstack/eslint-patch": "^1.10.3",
     "@vue/eslint-config-typescript": "^13.0.0"
