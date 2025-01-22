@@ -2,8 +2,8 @@ import { beforeAll, describe, expect, test, vi } from "vitest";
 
 import { mount } from "@vue/test-utils";
 
-import { VuePDF, usePDF } from "@warp10-pauloschussler/vue-pdf/src";
-import type { HighlightEventPayload } from "@warp10-pauloschussler/vue-pdf/src/components/types.ts";
+import { VuePDF, usePDF } from "@warp10-ai/vue-pdf/src";
+import type { HighlightEventPayload } from "@warp10-ai/vue-pdf/src/components/types.ts";
 
 import a14PDF from "@samples/14.pdf";
 import a45PDF from "@samples/45.pdf";

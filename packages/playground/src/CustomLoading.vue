@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { VuePDF } from '@warp10-pauloschussler/vue-pdf';
+import { VuePDF } from '@warp10-ai/vue-pdf';
 import * as PDFJS from 'pdfjs-dist';
 import { ref } from 'vue';
 

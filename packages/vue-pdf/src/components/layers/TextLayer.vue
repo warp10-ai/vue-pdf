@@ -4,6 +4,7 @@ import { onMounted, ref, watch } from "vue";
 
 import type { PDFPageProxy, PageViewport } from "pdfjs-dist";
 import type {
+  HighlightClickPayload,
   HighlightEventPayload,
   HighlightOptions,
   TextLayerLoadedEventPayload,
@@ -13,15 +14,19 @@ import { findMatches, highlightMatches, resetDivs } from "../utils/highlight";
 const props = defineProps<{
   page?: PDFPageProxy;
   viewport?: PageViewport;
-  highlightText?: string | string[];
+  highlightText?:
+    | string
+    | string[]
+    | Array<{ keyword: string; key: string | number }>;
   highlightOptions?: HighlightOptions;
-  hightlightPages?: number[];
+  highlightPages?: number[];
   customHighlightClass?: string;
 }>();
 
 const emit = defineEmits<{
   (event: "highlight", payload: HighlightEventPayload): void;
   (event: "textLoaded", payload: TextLayerLoadedEventPayload): void;
+  (event: "highlightClick", payload: HighlightClickPayload): void;
 }>();
 
 const layer = ref<HTMLDivElement>();
@@ -39,6 +44,17 @@ function getHighlightOptionsWithDefaults(): HighlightOptions {
   );
 }
 
+function normalizeHighlightText(
+  highlight:
+    | string
+    | string[]
+    | Array<{ keyword: string; key: string | number }>
+) {
+  if (!highlight) return [];
+  if (typeof highlight === "string") return [highlight];
+  return highlight;
+}
+
 async function findAndHighlight(reset = false) {
   const page = props.page;
   const textContent = await page?.getTextContent();
@@ -49,23 +65,30 @@ async function findAndHighlight(reset = false) {
 
   if (
     props.highlightText &&
-    (!props.hightlightPages || props.hightlightPages.includes(page!.pageNumber))
+    page &&
+    (!props.highlightPages || props.highlightPages.includes(page.pageNumber))
   ) {
-    const queries =
-      typeof props.highlightText === "string"
-        ? [props.highlightText]
-        : props.highlightText;
+    const normalizedHighlights = normalizeHighlightText(props.highlightText);
     const matches = findMatches(
-      queries,
-      textContent!,
+      normalizedHighlights,
+      textContent,
       getHighlightOptionsWithDefaults()
     );
+
     highlightMatches(
       matches,
-      textContent!,
+      textContent,
       textDivs,
-      props.customHighlightClass || "highlight"
+      props.customHighlightClass || "highlight",
+      (text, key, keyword) =>
+        emit("highlightClick", {
+          text,
+          key,
+          keyword,
+          pageNumber: page.pageNumber,
+        })
     );
+
     emit("highlight", {
       matches,
       textContent,

@@ -7,7 +7,7 @@ export default mergeConfig(
   defineConfig({
     resolve: {
       alias: {
-        "@warp10-pauloschussler/vue-pdf": resolve(__dirname, "../vue-pdf/src"),
+        "@warp10-ai/vue-pdf": resolve(__dirname, "../vue-pdf/src"),
       },
     },
   })

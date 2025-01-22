@@ -6,7 +6,7 @@ Text loaded event's payload has too many data to display on screen, open the con
 
 ```vue
 <script setup>
-import { VuePDF, usePDF } from '@warp10-pauloschussler/vue-pdf'
+import { VuePDF, usePDF } from '@warp10-ai/vue-pdf'
 
 const { pdf } = usePDF('https://raw.githubusercontent.com/mozilla/pdf.js/ba2edeae/web/compressed.tracemonkey-pldi-09.pdf')
 function onLoaded(value) {

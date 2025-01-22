@@ -107,9 +107,19 @@ function highlightMatches(
   matches: Match[],
   textContent: TextContent,
   textDivs: HTMLElement[],
-  customHighlightClass: string = "highlight"
+  customHighlightClass: string = "highlight",
+  onHighlightClick?: (
+    text: string,
+    key: string | number,
+    keyword: string
+  ) => void
 ) {
-  function appendHighlightDiv(idx: number, startOffset = -1, endOffset = -1) {
+  function appendHighlightDiv(
+    match: Match,
+    idx: number,
+    startOffset = -1,
+    endOffset = -1
+  ) {
     const textItem = textContent.items[idx] as TextItem;
     const nodes = [];
 
@@ -138,6 +148,15 @@ function highlightMatches(
     const node = document.createTextNode(content);
     const span = document.createElement("span");
     span.className = `${customHighlightClass} appended`;
+
+    if (onHighlightClick) {
+      span.style.cursor = "pointer";
+      span.addEventListener("click", () => {
+        onHighlightClick(content, match.key, match.keyword);
+      });
+    }
+
+    span.append(node);
     span.append(node);
 
     nodes.push(span);
@@ -188,13 +207,21 @@ function highlightMatches(
 
   for (const match of matches) {
     if (match.start.idx === match.end.idx) {
-      appendHighlightDiv(match.start.idx, match.start.offset, match.end.offset);
+      appendHighlightDiv(
+        match,
+        match.start.idx,
+        match.start.offset,
+        match.end.offset
+      );
     } else {
       for (let si = match.start.idx, ei = match.end.idx; si <= ei; si++) {
-        if (si === match.start.idx) appendHighlightDiv(si, match.start.offset);
-        else if (si === match.end.idx)
-          appendHighlightDiv(si, -1, match.end.offset);
-        else appendHighlightDiv(si);
+        if (si === match.start.idx) {
+          appendHighlightDiv(match, si, match.start.offset);
+        } else if (si === match.end.idx) {
+          appendHighlightDiv(match, si, -1, match.end.offset);
+        } else {
+          appendHighlightDiv(match, si);
+        }
       }
     }
   }
@@ -213,14 +240,31 @@ function resetDivs(textContent: TextContent, textDivs: HTMLElement[]) {
 }
 
 function findMatches(
-  queries: string[],
+  queries: string[] | Array<{ keyword: string; key: string | number }>,
   textContent: TextContent,
   options: HighlightOptions
 ) {
   const convertedMatches = [];
-  for (const query of queries) {
-    const matches = searchQuery(textContent, query, options);
-    convertedMatches.push(...convertMatches(matches, textContent));
+
+  const normalizedQueries =
+    Array.isArray(queries) && typeof queries[0] === "string"
+      ? (queries as string[]).map((keyword) => ({ keyword, key: keyword }))
+      : queries;
+
+  for (const query of normalizedQueries) {
+    const keyword = typeof query === "string" ? query : query.keyword;
+    const key = typeof query === "string" ? keyword : query.key;
+
+    const matches = searchQuery(textContent, keyword, options);
+
+    const matchesWithKeys = convertMatches(matches, textContent).map(
+      (match) => ({
+        ...match,
+        key,
+        keyword,
+      })
+    );
+    convertedMatches.push(...matchesWithKeys);
   }
   return convertedMatches;
 }

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import pdfdoc from '@samples/14.pdf';
-import { VuePDF, usePDF } from '@warp10-pauloschussler/vue-pdf';
+import { VuePDF, usePDF } from '@warp10-ai/vue-pdf';
 import { ref } from 'vue';
 
 const { pdf } = usePDF(pdfdoc)

@@ -2,8 +2,8 @@
 
 ```vue
 <script setup>
-import { VuePDF, usePDF } from '@warp10-pauloschussler/vue-pdf'
-import '@warp10-pauloschussler/vue-pdf/style.css'
+import { VuePDF, usePDF } from '@warp10-ai/vue-pdf'
+import '@warp10-ai/vue-pdf/style.css'
 
 const { pdf } = usePDF({
   url: '/xfa.pdf',

@@ -3,7 +3,7 @@
 ```vue
 <script setup>
 import { ref } from 'vue'
-import { VuePDF, usePDF } from '@warp10-pauloschussler/vue-pdf'
+import { VuePDF, usePDF } from '@warp10-ai/vue-pdf'
 
 const page = ref(1)
 const { pdf, pages } = usePDF('https://mozilla.github.io/pdf.js/web/compressed.tracemonkey-pldi-09.pdf')

@@ -16,7 +16,7 @@ export default {
     },
     resolve: {
       alias: {
-        "@warp10-pauloschussler/vue-pdf": resolve(__dirname, "../../packages/vue-pdf/dist")
+        "@warp10-ai/vue-pdf": resolve(__dirname, "../../packages/vue-pdf/dist")
       },
     },
   },

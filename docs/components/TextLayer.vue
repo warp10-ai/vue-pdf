@@ -1,6 +1,6 @@
 <script setup>
-import { VuePDF, usePDF } from '@warp10-pauloschussler/vue-pdf';
-import '@warp10-pauloschussler/vue-pdf/style.css';
+import { VuePDF, usePDF } from '@warp10-ai/vue-pdf';
+import '@warp10-ai/vue-pdf/style.css';
 import { ref } from 'vue';
 
 const text_layer = ref(false)

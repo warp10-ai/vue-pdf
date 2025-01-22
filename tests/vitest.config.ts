@@ -16,12 +16,12 @@ export default mergeConfig(
         headless: true,
       },
       deps: {
-        inline: ["@warp10-pauloschussler/vue-pdf"],
+        inline: ["@warp10-ai/vue-pdf"],
       },
     },
     resolve: {
       alias: {
-        "@warp10-pauloschussler/vue-pdf": path.resolve(
+        "@warp10-ai/vue-pdf": path.resolve(
           __dirname,
           "../packages/vue-pdf"
         ),

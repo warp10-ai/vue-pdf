@@ -74,6 +74,7 @@ const emit = defineEmits<{
   (event: "textLoaded", payload: TextLayerLoadedEventPayload): void;
   (event: "annotationLoaded", payload: any[]): void;
   (event: "xfaLoaded"): void;
+  (event: "highlightClick", payload: any): void;
 }>();
 
 // Template Refs
@@ -349,6 +350,7 @@ defineExpose({
       v-bind="{ ...internalProps, ...tlayerProps }"
       @highlight="emit('highlight', $event)"
       @text-loaded="emit('textLoaded', $event)"
+      @highlight-click="emit('highlightClick', $event)"
     />
     <XFALayer v-bind="{ ...internalProps }" @xfa-loaded="emit('xfaLoaded')" />
     <div v-show="loading" ref="loadingLayer" style="position: absolute">

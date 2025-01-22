@@ -1,5 +1,5 @@
 {
-  "name": "@warp10-pauloschussler/vue-pdf",
+  "name": "@warp10-ai/vue-pdf",
   "version": "1.0.0",
   "description": "Fork of vue-pdf-monorepo with custom modifications",
   "files": [
@@ -19,6 +19,9 @@
     "build:docs": "npm run --prefix packages/vue-pdf build:lib && npm run --prefix docs build",
     "lint:fix": "eslint --fix .",
     "prepublishOnly": "npm run build"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/"
   },
   "dependencies": {
     "@rushstack/eslint-patch": "^1.10.3",

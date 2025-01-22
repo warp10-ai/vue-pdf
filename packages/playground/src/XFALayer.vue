@@ -3,7 +3,7 @@
 import type { DocumentInitParameters } from 'pdfjs-dist/types/src/display/api';
 import { ref } from 'vue';
 
-import { VuePDF, usePDF } from '@warp10-pauloschussler/vue-pdf';
+import { VuePDF, usePDF } from '@warp10-ai/vue-pdf';
 
 import pdf014 from '@samples/14.pdf';
 
