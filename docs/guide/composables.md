@@ -12,7 +12,7 @@ Keep in mind that `usePDF` use the same [DocumentInitParameter](https://github.c
 
 ```vue
 <script setup>
-import { VuePDF, usePDF } from '@warp10-pauloschussler/vue-pdf'
+import { VuePDF, usePDF } from '@warp10-ai/vue-pdf'
 
 const { pdf, pages, info } = usePDF('sample.pdf')
 </script>
@@ -28,7 +28,7 @@ const { pdf, pages, info } = usePDF('sample.pdf')
 
 ```vue
 <script setup>
-import { VuePDF, usePDF } from '@warp10-pauloschussler/vue-pdf'
+import { VuePDF, usePDF } from '@warp10-ai/vue-pdf'
 
 // Changing currentPdf value will change pdf, pages and info values
 const currentPdf = ref('sample.pdf')

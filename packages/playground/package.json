@@ -6,7 +6,7 @@
     "dev": "vite ."
   },
   "dependencies": {
-    "@warp10-pauloschussler/vue-pdf": "*"
+    "@warp10-ai/vue-pdf": "*"
   },
   "devDependencies": {
     "@types/node": "^18.16.3",

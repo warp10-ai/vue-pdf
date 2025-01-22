@@ -6,7 +6,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@warp10-pauloschussler/vue-pdf": "*"
+    "@warp10-ai/vue-pdf": "*"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^4.2.1",

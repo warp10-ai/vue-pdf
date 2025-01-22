@@ -11,7 +11,7 @@
     "resolveJsonModule": true,
     "baseUrl": ".",
     "paths": {
-      "@warp10-pauloschussler/vue-pdf": [
+      "@warp10-ai/vue-pdf": [
         "../packages/vue-pdf/src"
       ]
     }
