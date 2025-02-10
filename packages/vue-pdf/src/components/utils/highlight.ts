@@ -97,9 +97,12 @@ function convertMatches(
       start: divStart,
       end: divEnd,
       str: matches[m][2] as string,
-      oindex: matches[m][0] as number,
+      index: matches[m][0] as number,
+      key: "",
+      keyword: "",
     });
   }
+
   return convertedMatches;
 }
 
@@ -108,11 +111,21 @@ function highlightMatches(
   textContent: TextContent,
   textDivs: HTMLElement[],
   customHighlightClass: string = "highlight",
+  customActiveHighlightClass?: string,
+  activeHighlightText?: string,
   onHighlightClick?: (
+    event: MouseEvent,
     text: string,
     key: string | number,
     keyword: string
-  ) => void
+  ) => void,
+  onHighlightMouseEnter?: (
+    event: MouseEvent,
+    text: string,
+    key: string | number,
+    keyword: string
+  ) => void,
+  onHighlightMouseLeave?: () => void
 ) {
   function appendHighlightDiv(
     match: Match,
@@ -147,16 +160,52 @@ function highlightMatches(
 
     const node = document.createTextNode(content);
     const span = document.createElement("span");
-    span.className = `${customHighlightClass} appended`;
 
-    if (onHighlightClick) {
-      span.style.cursor = "pointer";
-      span.addEventListener("click", () => {
-        onHighlightClick(content, match.key, match.keyword);
+    const highlightClass =
+      match.keyword &&
+      match.keyword.toLowerCase() === activeHighlightText?.toLowerCase()
+        ? customActiveHighlightClass
+        : customHighlightClass;
+
+    span.className = `${highlightClass} appended`;
+
+    if (onHighlightClick && match.key && match.keyword) {
+      span.addEventListener("click", (event) => {
+        event.stopPropagation();
+        onHighlightClick(
+          event,
+          content,
+          match.key as string | number,
+          match.keyword as string
+        );
       });
     }
 
-    span.append(node);
+    if (onHighlightClick && match.key && match.keyword) {
+      span.addEventListener("click", (event) => {
+        event.stopPropagation();
+        onHighlightClick(
+          event,
+          content,
+          match.key as string | number,
+          match.keyword as string
+        );
+      });
+    }
+
+    span.addEventListener("mouseenter", (event) => {
+      onHighlightMouseEnter?.(
+        event,
+        content,
+        match.key as string | number,
+        match.keyword as string
+      );
+    });
+
+    span.addEventListener("mouseleave", () => {
+      onHighlightMouseLeave?.();
+    });
+
     span.append(node);
 
     nodes.push(span);
@@ -260,8 +309,8 @@ function findMatches(
     const matchesWithKeys = convertMatches(matches, textContent).map(
       (match) => ({
         ...match,
-        key,
-        keyword,
+        key: key as string | number,
+        keyword: keyword as string,
       })
     );
     convertedMatches.push(...matchesWithKeys);

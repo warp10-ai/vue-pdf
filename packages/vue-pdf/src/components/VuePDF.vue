@@ -19,6 +19,7 @@ import type {
 import type {
   AnnotationEventPayload,
   HighlightEventPayload,
+  HighlightHoverPayload,
   HighlightOptions,
   LoadedEventPayload,
   TextLayerLoadedEventPayload,
@@ -55,9 +56,11 @@ const props = withDefaults(
     watermarkText?: string;
     watermarkOptions?: WatermarkOptions;
     highlightText?: string | string[];
+    activeHighlightText?: string;
     highlightOptions?: HighlightOptions;
     highlightPages?: number[];
     customHighlightClass?: string;
+    customActiveHighlightClass?: string;
   }>(),
   {
     page: 1,
@@ -75,6 +78,8 @@ const emit = defineEmits<{
   (event: "annotationLoaded", payload: any[]): void;
   (event: "xfaLoaded"): void;
   (event: "highlightClick", payload: any): void;
+  (event: "highlightHover", payload: HighlightHoverPayload): void;
+  (event: "highlightLeave"): void;
 }>();
 
 // Template Refs
@@ -102,9 +107,11 @@ const alayerProps = computed(() => {
 const tlayerProps = computed(() => {
   return {
     highlightText: props.highlightText,
+    activeHighlightText: props.activeHighlightText,
     highlightOptions: props.highlightOptions,
     highlightPages: props.highlightPages,
     customHighlightClass: props.customHighlightClass,
+    customActiveHighlightClass: props.customActiveHighlightClass,
   };
 });
 
@@ -351,6 +358,8 @@ defineExpose({
       @highlight="emit('highlight', $event)"
       @text-loaded="emit('textLoaded', $event)"
       @highlight-click="emit('highlightClick', $event)"
+      @highlight-hover="emit('highlightHover', $event)"
+      @highlight-leave="emit('highlightLeave')"
     />
     <XFALayer v-bind="{ ...internalProps }" @xfa-loaded="emit('xfaLoaded')" />
     <div v-show="loading" ref="loadingLayer" style="position: absolute">

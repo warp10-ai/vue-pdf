@@ -6,6 +6,7 @@ import type { PDFPageProxy, PageViewport } from "pdfjs-dist";
 import type {
   HighlightClickPayload,
   HighlightEventPayload,
+  HighlightHoverPayload,
   HighlightOptions,
   TextLayerLoadedEventPayload,
 } from "../types";
@@ -18,20 +19,31 @@ const props = defineProps<{
     | string
     | string[]
     | Array<{ keyword: string; key: string | number }>;
+  activeHighlightText?: string;
   highlightOptions?: HighlightOptions;
   highlightPages?: number[];
   customHighlightClass?: string;
+  customActiveHighlightClass?: string;
 }>();
 
 const emit = defineEmits<{
   (event: "highlight", payload: HighlightEventPayload): void;
   (event: "textLoaded", payload: TextLayerLoadedEventPayload): void;
   (event: "highlightClick", payload: HighlightClickPayload): void;
+  (event: "highlightHover", payload: HighlightHoverPayload): void;
+  (event: "highlightLeave"): void;
 }>();
 
 const layer = ref<HTMLDivElement>();
 const endContent = ref<HTMLDivElement>();
 let textDivs: HTMLElement[] = [];
+
+watch(
+  () => props.activeHighlightText,
+  () => {
+    findAndHighlight(true);
+  }
+);
 
 function getHighlightOptionsWithDefaults(): HighlightOptions {
   return Object.assign(
@@ -80,13 +92,11 @@ async function findAndHighlight(reset = false) {
       textContent,
       textDivs,
       props.customHighlightClass || "highlight",
-      (text, key, keyword) =>
-        emit("highlightClick", {
-          text,
-          key,
-          keyword,
-          pageNumber: page.pageNumber,
-        })
+      props.customActiveHighlightClass,
+      props.activeHighlightText,
+      handleHighlightClick,
+      handleHighlightMouseEnter,
+      handleHighlightMouseLeave
     );
 
     emit("highlight", {
@@ -122,6 +132,52 @@ function render() {
     endContent.value = endOfContent;
     findAndHighlight();
   });
+}
+
+function handleHighlightClick(
+  event: MouseEvent,
+  text: string,
+  key: string | number,
+  keyword: string
+) {
+  const element = event.currentTarget as HTMLElement;
+  const rect = element.getBoundingClientRect();
+
+  emit("highlightClick", {
+    text,
+    key,
+    keyword,
+    position: {
+      x: rect.left + rect.width / 2,
+      y: rect.top,
+    },
+    pageNumber: props.page?.pageNumber || 1,
+  });
+}
+
+function handleHighlightMouseEnter(
+  event: MouseEvent,
+  text: string,
+  key: string | number,
+  keyword: string
+) {
+  const element = event.currentTarget as HTMLElement;
+  const rect = element.getBoundingClientRect();
+
+  emit("highlightHover", {
+    text,
+    key,
+    keyword,
+    position: {
+      x: rect.left + rect.width / 2,
+      y: rect.top,
+    },
+    pageNumber: props.page?.pageNumber || 1,
+  });
+}
+
+function handleHighlightMouseLeave() {
+  emit("highlightLeave");
 }
 
 function onMouseDown() {

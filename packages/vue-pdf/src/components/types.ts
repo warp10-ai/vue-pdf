@@ -19,6 +19,19 @@ export interface Match {
   };
   str: string;
   index: number;
+  key?: string | number;
+  keyword?: string;
+}
+
+export interface HighlightHoverPayload {
+  text: string;
+  key: string | number;
+  keyword: string;
+  position: {
+    x: number;
+    y: number;
+  };
+  pageNumber: number;
 }
 
 export type LoadedEventPayload = PageViewport;
@@ -39,6 +52,10 @@ export interface HighlightClickPayload {
   text: string;
   key: string | number;
   keyword: string;
+  position: {
+    x: number;
+    y: number;
+  };
   pageNumber: number;
 }
 
