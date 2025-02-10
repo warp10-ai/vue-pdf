@@ -1,6 +1,6 @@
 {
   "name": "@warp10-ai/vue-pdf",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "description": "PDF component for Vue 3",
   "author": {
     "name": "Warp10AI",
