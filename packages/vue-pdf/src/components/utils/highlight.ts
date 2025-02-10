@@ -170,18 +170,8 @@ function highlightMatches(
     span.className = `${highlightClass} appended`;
 
     if (onHighlightClick && match.key && match.keyword) {
-      span.addEventListener("click", (event) => {
-        event.stopPropagation();
-        onHighlightClick(
-          event,
-          content,
-          match.key as string | number,
-          match.keyword as string
-        );
-      });
-    }
+      span.style.cursor = "pointer";
 
-    if (onHighlightClick && match.key && match.keyword) {
       span.addEventListener("click", (event) => {
         event.stopPropagation();
         onHighlightClick(

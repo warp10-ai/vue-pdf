@@ -20,6 +20,10 @@ const handleHighlightHover = (event: any) => {
 const handleHighlightLeave = () => {
   console.log("handleHighlightLeave");
 };
+
+const handleHighlightClick = (payload: any) => {
+  console.log(payload);
+};
 </script>
 
 <template>
@@ -34,6 +38,7 @@ const handleHighlightLeave = () => {
       :activeHighlightText="activeHighlightText"
       @highlight-hover="handleHighlightHover"
       @highlight-leave="handleHighlightLeave"
+      @highlight-click="handleHighlightClick"
     />
   </div>
 </template>
