@@ -23,7 +23,7 @@ const props = defineProps<{
   highlightOptions?: HighlightOptions;
   highlightPages?: number[];
   customHighlightClass?: string;
-  highlightTextColor?: string;
+  activeHighlightTextColor?: string;
   customActiveHighlightClass?: string;
 }>();
 
@@ -93,7 +93,7 @@ async function findAndHighlight(reset = false) {
       textContent,
       textDivs,
       props.customHighlightClass || "highlight",
-      props.highlightTextColor,
+      props.activeHighlightTextColor,
       props.customActiveHighlightClass,
       props.activeHighlightText,
       handleHighlightClick,

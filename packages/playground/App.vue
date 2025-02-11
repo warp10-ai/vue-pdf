@@ -37,6 +37,7 @@ const handleHighlightClick = (payload: any) => {
       custom-highlight-class="custom"
       customActiveHighlightClass="custom-active"
       :activeHighlightText="activeHighlightText"
+      activeHighlightTextColor="white"
       @highlight-hover="handleHighlightHover"
       @highlight-leave="handleHighlightLeave"
       @highlight-click="handleHighlightClick"

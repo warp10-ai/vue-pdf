@@ -111,7 +111,7 @@ function highlightMatches(
   textContent: TextContent,
   textDivs: HTMLElement[],
   customHighlightClass: string = "highlight",
-  highlightTextColor?: string,
+  activeHighlightTextColor?: string,
   customActiveHighlightClass?: string,
   activeHighlightText?: string,
   onHighlightClick?: (
@@ -162,15 +162,20 @@ function highlightMatches(
     const node = document.createTextNode(content);
     const span = document.createElement("span");
 
-    const highlightClass =
-      match.keyword &&
-      match.keyword.toLowerCase() === activeHighlightText?.toLowerCase()
-        ? customActiveHighlightClass
-        : customHighlightClass;
+    let highlightClass = customHighlightClass;
 
+    if (
+      match.keyword &&
+      match.keyword.toLowerCase() === activeHighlightText?.toLowerCase() &&
+      customActiveHighlightClass
+    ) {
+      highlightClass = customActiveHighlightClass;
+
+      if (activeHighlightTextColor) span.style.color = activeHighlightTextColor;
+    }
     span.className = `${highlightClass} appended`;
 
-    if (highlightTextColor) span.style.color = highlightTextColor;
+    if (activeHighlightTextColor) span.style.color = activeHighlightTextColor;
 
     if (onHighlightClick && match.key && match.keyword) {
       span.style.cursor = "pointer";
