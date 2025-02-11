@@ -111,6 +111,7 @@ function highlightMatches(
   textContent: TextContent,
   textDivs: HTMLElement[],
   customHighlightClass: string = "highlight",
+  highlightTextColor?: string,
   customActiveHighlightClass?: string,
   activeHighlightText?: string,
   onHighlightClick?: (
@@ -168,6 +169,8 @@ function highlightMatches(
         : customHighlightClass;
 
     span.className = `${highlightClass} appended`;
+
+    if (highlightTextColor) span.style.color = highlightTextColor;
 
     if (onHighlightClick && match.key && match.keyword) {
       span.style.cursor = "pointer";

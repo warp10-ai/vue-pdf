@@ -31,6 +31,7 @@ const handleHighlightClick = (payload: any) => {
     <VuePDF
       :pdf="pdf"
       text-layer
+      fit-parent
       :highlight-text="highlightText"
       :highlightOptions="highlightOptions"
       custom-highlight-class="custom"
@@ -58,16 +59,10 @@ const handleHighlightClick = (payload: any) => {
 }
 
 .custom-active {
-  background: linear-gradient(
-    0deg,
-    rgba(154, 218, 16, 0.2),
-    rgba(175, 5, 39, 0.2)
-  );
-  background-color: transparent;
-  border: 2px solid;
-  border-image-source: linear-gradient(147.05deg, #a095ff 0%, #e294ff 100%);
-  border-image-slice: 1;
-  cursor: pointer;
+  background-color: blue;
+  position: relative;
+  padding: 2px;
+  border-radius: 4px;
 }
 .absolute {
   z-index: 9999 !important;
