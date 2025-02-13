@@ -189,18 +189,14 @@ function highlightMatches(
       });
     }
 
-    span.addEventListener(
-      "mouseover",
-      (event) => {
-        onHighlightMouseEnter?.(
-          event,
-          content,
-          match.key as string | number,
-          match.keyword as string
-        );
-      },
-      { once: true }
-    );
+    span.addEventListener("mouseover", (event) => {
+      onHighlightMouseEnter?.(
+        event,
+        content,
+        match.key as string | number,
+        match.keyword as string
+      );
+    });
 
     span.addEventListener("mouseleave", () => {
       onHighlightMouseLeave?.();
