@@ -1,9 +1,33 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import * as PDFJS from "pdfjs-dist";
 import { VuePDF, usePDF } from "@warp10-ai/vue-pdf";
+import { ref } from "vue";
+
+// Primeiro configurar o worker legacy
+PDFJS.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${PDFJS.version}/legacy/build/pdf.worker.min.mjs`;
+
+// Polyfill para Promise.withResolvers
+if (typeof Promise.withResolvers === "undefined") {
+  if (typeof window !== "undefined") {
+    // @ts-expect-error This does not exist outside of polyfill
+    window.Promise.withResolvers = function () {
+      let resolve, reject;
+      const promise = new Promise((res, rej) => {
+        resolve = res;
+        reject = rej;
+      });
+      return { promise, resolve, reject };
+    };
+  }
+}
 
 const { pdf } = usePDF(
-  "https://raw.githubusercontent.com/mozilla/pdf.js/ba2edeae/web/compressed.tracemonkey-pldi-09.pdf"
+  "https://raw.githubusercontent.com/mozilla/pdf.js/ba2edeae/web/compressed.tracemonkey-pldi-09.pdf",
+  {
+    onError: (error) => {
+      console.error("PDF processing error:", error);
+    },
+  }
 );
 
 const highlightText = ref(["javascript", "such"]);

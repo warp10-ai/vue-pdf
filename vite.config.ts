@@ -10,6 +10,11 @@ export default defineConfig({
       },
     },
   },
+  esbuild: {
+    supported: {
+      "top-level-await": true,
+    },
+  },
   resolve: {
     alias: {
       "@samples": resolve(__dirname, "samples"),

@@ -25,7 +25,8 @@
   },
   "dependencies": {
     "@rushstack/eslint-patch": "^1.10.3",
-    "@vue/eslint-config-typescript": "^13.0.0"
+    "@vue/eslint-config-typescript": "^13.0.0",
+    "pdfjs-dist": "^3.11.174"
   },
   "repository": {
     "type": "git",
