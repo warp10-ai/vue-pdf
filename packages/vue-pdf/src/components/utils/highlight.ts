@@ -1,6 +1,8 @@
 import type { TextItem } from "pdfjs-dist/types/src/display/api";
 import type { TextContent } from "pdfjs-dist/types/src/display/text_layer";
 import type { HighlightOptions, Match } from "../types";
+import { start } from "repl";
+import { text } from "stream/consumers";
 
 function searchQuery(
   textContent: TextContent,
@@ -38,6 +40,7 @@ function searchQuery(
   let match;
 
   // eslint-disable-next-line no-cond-assign
+
   while ((match = regex.exec(textJoined)) !== null)
     matches.push([match.index, match[0].length, match[0]]);
 
@@ -52,6 +55,7 @@ function convertMatches(
     // When textitem has a EOL flag and the string has a hyphen at the end
     // the hyphen should be removed (-1 len) so the sentence could be searched as a joined one.
     // In other cases the EOL flag introduce a whitespace (+1 len) between two different sentences
+
     if (item.hasEOL) {
       if (item.str.endsWith("-")) return -1;
       else return 1;
@@ -93,6 +97,7 @@ function convertMatches(
       idx: index,
       offset: mindex - tindex,
     };
+
     convertedMatches.push({
       start: divStart,
       end: divEnd,
@@ -250,6 +255,158 @@ function highlightMatches(
     div.replaceChildren(...nodes);
   }
 
+  function handleMultiDivHighlight(match: Match) {
+    const startDiv = textDivs[match.start.idx];
+    const endDiv = textDivs[match.end.idx];
+    const startItem = textContent.items[match.start.idx] as TextItem;
+    const endItem = textContent.items[match.end.idx] as TextItem;
+
+    if (!startDiv || !endDiv || !startItem || !endItem) return;
+
+    const startRect = startDiv.getBoundingClientRect();
+    const endRect = endDiv.getBoundingClientRect();
+
+    // Create temporary divs for measure the text and offsets
+    const measureStartDiv = document.createElement("span");
+    measureStartDiv.textContent = startItem.str.substring(
+      0,
+      match.start.offset
+    );
+    measureStartDiv.style.visibility = "hidden";
+    startDiv.appendChild(measureStartDiv);
+
+    const measureEndDiv = document.createElement("span");
+    measureEndDiv.textContent = endItem.str.substring(0, match.end.offset);
+    measureEndDiv.style.visibility = "hidden";
+    endDiv.appendChild(measureEndDiv);
+
+    const startMeasureRect = measureStartDiv.getBoundingClientRect();
+    const endMeasureRect = measureEndDiv.getBoundingClientRect();
+
+    startDiv.removeChild(measureStartDiv);
+    endDiv.removeChild(measureEndDiv);
+
+    // Create the highlight element
+    const highlight = document.createElement("span");
+    highlight.className = `${customHighlightClass}`;
+
+    // Calculate positions and dimensions for offsets
+    const top = startRect.top;
+    const left = startRect.left + startMeasureRect.width;
+    const width =
+      endRect.left +
+      endMeasureRect.width -
+      (startRect.left + startMeasureRect.width);
+    const height = endRect.bottom - startRect.top;
+
+    Object.assign(highlight.style, {
+      position: "absolute",
+      top: `${top}px`,
+      left: `${left}px`,
+      width: `${width}px`,
+      height: `${height}px`,
+      pointerEvents: "all",
+      zIndex: "1",
+      whiteSpace: "nowrap",
+    });
+
+    if (
+      match.keyword &&
+      match.keyword.toLowerCase() === activeHighlightText?.toLowerCase() &&
+      customActiveHighlightClass
+    ) {
+      highlight.className = `${customActiveHighlightClass}`;
+      if (activeHighlightTextColor) {
+        highlight.style.color = activeHighlightTextColor;
+      }
+
+      // Create container for cloned text
+      const textContainer = document.createElement("div");
+      textContainer.style.position = "absolute";
+      textContainer.style.top = "0";
+      textContainer.style.left = "0";
+      textContainer.style.color = activeHighlightTextColor || "inherit";
+      textContainer.style.transform = "translateX(0)";
+
+      // Accumulate the text from each div
+      let highlightText = "";
+      for (let i = match.start.idx; i <= match.end.idx; i++) {
+        const currentDiv = textDivs[i];
+        const currentItem = textContent.items[i] as TextItem;
+        if (!currentDiv || !currentItem) continue;
+
+        // Adjust the text based on offsets
+        let text = currentItem.str;
+        if (i === match.start.idx) {
+          text = text.substring(match.start.offset);
+        }
+        if (i === match.end.idx) {
+          text = text.substring(0, match.end.offset);
+        }
+
+        highlightText += text;
+      }
+
+      // Create a single text node with the concatenated text
+      const textNode = document.createTextNode(highlightText);
+      textContainer.appendChild(textNode);
+
+      // Apply styles from the start div to the text container
+      const initialDiv = textDivs[match.start.idx];
+      if (initialDiv) {
+        const computedStyle = window.getComputedStyle(initialDiv);
+        const originalSize = parseFloat(computedStyle.fontSize);
+        const adjustedSize = originalSize - 1;
+
+        textContainer.style.position = "absolute";
+        textContainer.style.top = "0";
+        textContainer.style.left = "0";
+        textContainer.style.color = activeHighlightTextColor || "inherit";
+        textContainer.style.fontFamily = computedStyle.fontFamily;
+        textContainer.style.fontWeight = computedStyle.fontWeight;
+        textContainer.style.fontSize = `${adjustedSize}px`;
+      }
+
+      highlight.appendChild(textContainer);
+    }
+
+    // Add event listeners
+    if (onHighlightClick && match.key && match.keyword) {
+      highlight.style.cursor = "pointer";
+      highlight.addEventListener("click", (event) => {
+        event.stopPropagation();
+        onHighlightClick(
+          event,
+          textContent.items
+            .slice(match.start.idx, match.end.idx + 1)
+            .map((item) => ("str" in item ? item.str : ""))
+            .join(" "),
+          match.key as string | number,
+          match.keyword as string
+        );
+      });
+    }
+
+    highlight.addEventListener("mouseover", (event) => {
+      onHighlightMouseEnter?.(
+        event,
+        textContent.items
+          .slice(match.start.idx, match.end.idx + 1)
+          .map((item) => ("str" in item ? item.str : ""))
+          .join(" "),
+        match.key as string | number,
+        match.keyword as string
+      );
+    });
+
+    highlight.addEventListener("mouseleave", () => {
+      onHighlightMouseLeave?.();
+    });
+
+    // Add highlight to the document
+    document.body.appendChild(highlight);
+  }
+
   for (const match of matches) {
     if (match.start.idx === match.end.idx) {
       appendHighlightDiv(
@@ -259,15 +416,7 @@ function highlightMatches(
         match.end.offset
       );
     } else {
-      for (let si = match.start.idx, ei = match.end.idx; si <= ei; si++) {
-        if (si === match.start.idx) {
-          appendHighlightDiv(match, si, match.start.offset);
-        } else if (si === match.end.idx) {
-          appendHighlightDiv(match, si, -1, match.end.offset);
-        } else {
-          appendHighlightDiv(match, si);
-        }
-      }
+      handleMultiDivHighlight(match);
     }
   }
 }
@@ -309,8 +458,10 @@ function findMatches(
         keyword: keyword as string,
       })
     );
+
     convertedMatches.push(...matchesWithKeys);
   }
+
   return convertedMatches;
 }
 
