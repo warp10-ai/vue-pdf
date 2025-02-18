@@ -41,21 +41,27 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="border rounded-lg" v-for="page in resumePdf?.pages" :key="page">
-    <VuePDF
-      :pdf="resumePdf.pdf"
-      :page="page"
-      text-layer
-      :highlight-text="highlightText"
-      :highlightOptions="highlightOptions"
-      custom-highlight-class="custom-pdf-highlight"
-      customActiveHighlightClass="custom-active-highlight"
-      :activeHighlightText="activeHighlightText"
-      activeHighlightTextColor="white"
-      @highlight-hover="handleHighlightHover"
-      @highlight-leave="handleHighlightLeave"
-      @highlight-click="handleHighlightClick"
-    />
+  <div class="flex flex-col gap-4">
+    <div
+      class="border rounded-lg overflow-y-auto relative"
+      v-for="page in resumePdf?.pages"
+      :key="page"
+    >
+      <VuePDF
+        :pdf="resumePdf.pdf"
+        :page="page"
+        text-layer
+        :highlight-text="highlightText"
+        :highlightOptions="highlightOptions"
+        custom-highlight-class="custom-pdf-highlight"
+        customActiveHighlightClass="custom-active-highlight"
+        :activeHighlightText="activeHighlightText"
+        activeHighlightTextColor="white"
+        @highlight-hover="handleHighlightHover"
+        @highlight-leave="handleHighlightLeave"
+        @highlight-click="handleHighlightClick"
+      />
+    </div>
   </div>
 </template>
 
@@ -66,7 +72,7 @@ onMounted(() => {
     rgba(53, 184, 255, 0.2),
     rgba(53, 184, 255, 0.2)
   );
-  position: relative;
+  position: absolute;
   background-color: transparent;
   cursor: pointer;
   padding: -1px;
@@ -83,17 +89,16 @@ onMounted(() => {
   mask-composite: exclude;
 }
 
-.absolute {
-  z-index: 9999 !important;
-}
-.text-white {
-  color: white;
-}
-
 .custom-active-highlight {
   background-color: #5c15e0;
   cursor: pointer;
   border-radius: 2px;
-  box-shadow: 0 0 0 1px #5c15e0;
+  box-shadow: 0 0 0 3px #5c15e0;
+  position: absolute;
+}
+
+/* Container do PDF precisa ser relative */
+.vue-pdf {
+  position: relative;
 }
 </style>

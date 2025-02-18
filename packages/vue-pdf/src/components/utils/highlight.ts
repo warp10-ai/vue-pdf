@@ -1,8 +1,6 @@
 import type { TextItem } from "pdfjs-dist/types/src/display/api";
 import type { TextContent } from "pdfjs-dist/types/src/display/text_layer";
 import type { HighlightOptions, Match } from "../types";
-import { start } from "repl";
-import { text } from "stream/consumers";
 
 function searchQuery(
   textContent: TextContent,
@@ -263,8 +261,9 @@ function highlightMatches(
 
     if (!startDiv || !endDiv || !startItem || !endItem) return;
 
-    const startRect = startDiv.getBoundingClientRect();
-    const endRect = endDiv.getBoundingClientRect();
+    // Find the common parent container of PDF divs
+    const container = startDiv.parentElement;
+    if (!container) return;
 
     // Create temporary divs for measure the text and offsets
     const measureStartDiv = document.createElement("span");
@@ -290,25 +289,21 @@ function highlightMatches(
     const highlight = document.createElement("span");
     highlight.className = `${customHighlightClass}`;
 
-    // Calculate positions and dimensions for offsets
-    const top = startRect.top;
-    const left = startRect.left + startMeasureRect.width;
-    const width =
-      endRect.left +
+    // Use PDF div positions as reference
+    highlight.style.position = "absolute";
+    highlight.style.top = `${startDiv.offsetTop}px`;
+    highlight.style.left = `${startDiv.offsetLeft + startMeasureRect.width}px`;
+    highlight.style.width = `${
+      endDiv.offsetLeft +
       endMeasureRect.width -
-      (startRect.left + startMeasureRect.width);
-    const height = endRect.bottom - startRect.top;
-
-    Object.assign(highlight.style, {
-      position: "absolute",
-      top: `${top}px`,
-      left: `${left}px`,
-      width: `${width}px`,
-      height: `${height}px`,
-      pointerEvents: "all",
-      zIndex: "1",
-      whiteSpace: "nowrap",
-    });
+      (startDiv.offsetLeft + startMeasureRect.width)
+    }px`;
+    highlight.style.height = `${
+      endDiv.offsetTop + endDiv.offsetHeight - startDiv.offsetTop
+    }px`;
+    highlight.style.pointerEvents = "all";
+    highlight.style.zIndex = "1";
+    highlight.style.whiteSpace = "nowrap";
 
     if (
       match.keyword &&
@@ -403,10 +398,9 @@ function highlightMatches(
       onHighlightMouseLeave?.();
     });
 
-    // Add highlight to the document
-    document.body.appendChild(highlight);
+    // Add highlight to the PDF container instead of document.body
+    container.appendChild(highlight);
   }
-
   for (const match of matches) {
     if (match.start.idx === match.end.idx) {
       appendHighlightDiv(
