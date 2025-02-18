@@ -93,7 +93,7 @@ onMounted(() => {
   background-color: #5c15e0;
   cursor: pointer;
   border-radius: 2px;
-  box-shadow: 0 0 0 3px #5c15e0;
+  box-shadow: 0 0 0 2px #5c15e0;
   position: absolute;
 }
 
