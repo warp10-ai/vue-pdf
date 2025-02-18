@@ -38,7 +38,7 @@ const handleHighlightClick = (payload: any) => {
 };
 
 onMounted(() => {
-  resumePdf.value = usePDF(test);
+  resumePdf.value = usePDF(al);
 
   console.log(resumePdf);
 });

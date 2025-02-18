@@ -2,6 +2,46 @@ import type { TextItem } from "pdfjs-dist/types/src/display/api";
 import type { TextContent } from "pdfjs-dist/types/src/display/text_layer";
 import type { HighlightOptions, Match } from "../types";
 
+const measurementsCache = new Map<string, DOMRect>();
+const computedStylesCache = new WeakMap<HTMLElement, CSSStyleDeclaration>();
+const textItemsCache = new Map<string, TextItem[]>();
+
+function getMeasurements(div: HTMLElement, text: string): DOMRect {
+  const key = `${div.offsetTop}-${text}`;
+  if (!measurementsCache.has(key)) {
+    const measureDiv = document.createElement("span");
+    measureDiv.textContent = text;
+    measureDiv.style.visibility = "hidden";
+    div.appendChild(measureDiv);
+    const rect = measureDiv.getBoundingClientRect();
+    div.removeChild(measureDiv);
+    measurementsCache.set(key, rect);
+  }
+  return measurementsCache.get(key)!;
+}
+
+function getComputedStylesFor(element: HTMLElement): CSSStyleDeclaration {
+  if (!computedStylesCache.has(element)) {
+    computedStylesCache.set(element, window.getComputedStyle(element));
+  }
+  return computedStylesCache.get(element)!;
+}
+
+function getTextItemsSlice(
+  textContent: TextContent,
+  start: number,
+  end: number
+): TextItem[] {
+  const key = `${start}-${end}`;
+  if (!textItemsCache.has(key)) {
+    textItemsCache.set(
+      key,
+      textContent.items.slice(start, end + 1) as TextItem[]
+    );
+  }
+  return textItemsCache.get(key)!;
+}
+
 function searchQuery(
   textContent: TextContent,
   query: string,
@@ -143,6 +183,43 @@ function highlightMatches(
   ) => void,
   onHighlightMouseLeave?: () => void
 ) {
+  // Initialize container and setup event delegation
+  const container = textDivs[0]?.parentElement;
+  if (!container) return;
+
+  // Setup event delegation
+  container.addEventListener("mouseover", (event) => {
+    const target = event.target as HTMLElement;
+    const highlight = target.closest(".highlight-text, .highlight");
+    if (highlight && highlight instanceof HTMLElement) {
+      const { text, key, keyword } = highlight.dataset;
+      if (text && key && keyword) {
+        onHighlightMouseEnter?.(event, text, key, keyword);
+      }
+    }
+  });
+
+  container.addEventListener("mouseleave", (event) => {
+    const target = event.target as HTMLElement;
+    if (target.closest(".highlight-text, .highlight")) {
+      onHighlightMouseLeave?.();
+    }
+  });
+
+  if (onHighlightClick) {
+    container.addEventListener("click", (event) => {
+      const target = event.target as HTMLElement;
+      const highlight = target.closest(".highlight-text, .highlight");
+      if (highlight && highlight instanceof HTMLElement) {
+        const { text, key, keyword } = highlight.dataset;
+        if (text && key && keyword) {
+          event.stopPropagation();
+          onHighlightClick(event, text, key, keyword);
+        }
+      }
+    });
+  }
+
   function appendHighlightDiv(
     match: Match,
     idx: number,
@@ -150,119 +227,62 @@ function highlightMatches(
     endOffset = -1
   ) {
     const textItem = textContent.items[idx] as TextItem;
-    const nodes = [];
+    const div = textDivs[idx];
+    if (!div) return;
+
+    const fragment = document.createDocumentFragment();
+    const nodes: Node[] = [];
 
     let content = "";
-    let prevContent = "";
-    let nextContent = "";
-
-    let div = textDivs[idx];
-
-    if (!div) return; // don't process if div is undefinied
-
-    if (div.nodeType === Node.TEXT_NODE) {
-      const span = document.createElement("span");
-      div.before(span);
-      span.append(div);
-      textDivs[idx] = span;
-      div = span;
+    if (startOffset >= 0 && endOffset >= 0) {
+      content = textItem.str.substring(startOffset, endOffset);
+    } else if (startOffset < 0 && endOffset < 0) {
+      content = textItem.str;
+    } else if (startOffset >= 0) {
+      content = textItem.str.substring(startOffset);
+    } else if (endOffset >= 0) {
+      content = textItem.str.substring(0, endOffset);
     }
 
-    if (startOffset >= 0 && endOffset >= 0)
-      content = textItem.str.substring(startOffset, endOffset);
-    else if (startOffset < 0 && endOffset < 0) content = textItem.str;
-    else if (startOffset >= 0) content = textItem.str.substring(startOffset);
-    else if (endOffset >= 0) content = textItem.str.substring(0, endOffset);
-
-    const node = document.createTextNode(content);
     const span = document.createElement("span");
+    const node = document.createTextNode(content);
 
     let highlightClass = customHighlightClass;
-
     if (
       match.keyword &&
       match.keyword.toLowerCase() === activeHighlightText?.toLowerCase() &&
       customActiveHighlightClass
     ) {
       highlightClass = customActiveHighlightClass;
-
-      if (activeHighlightTextColor) span.style.color = activeHighlightTextColor;
+      if (activeHighlightTextColor) {
+        span.style.color = activeHighlightTextColor;
+      }
     }
+
     span.className = `${highlightClass} appended`;
+    span.dataset.text = content;
+    span.dataset.key = String(match.key);
+    span.dataset.keyword = match.keyword;
 
     if (onHighlightClick && match.key && match.keyword) {
       span.style.cursor = "pointer";
-
-      span.addEventListener("click", (event) => {
-        event.stopPropagation();
-        onHighlightClick(
-          event,
-          content,
-          match.key as string | number,
-          match.keyword as string
-        );
-      });
     }
 
-    span.addEventListener("mouseover", (event) => {
-      onHighlightMouseEnter?.(
-        event,
-        content,
-        match.key as string | number,
-        match.keyword as string
-      );
-    });
-
-    span.addEventListener("mouseleave", () => {
-      onHighlightMouseLeave?.();
-    });
-
     span.append(node);
-
     nodes.push(span);
 
     if (startOffset > 0) {
-      if (
-        div.childNodes.length === 1 &&
-        div.childNodes[0].nodeType === Node.TEXT_NODE
-      ) {
-        prevContent = textItem.str.substring(0, startOffset);
-        const node = document.createTextNode(prevContent);
-        nodes.unshift(node);
-      } else {
-        let alength = 0;
-        const prevNodes = [];
-        for (const childNode of div.childNodes) {
-          const textValue =
-            childNode.nodeType === Node.TEXT_NODE
-              ? childNode.nodeValue!
-              : childNode.firstChild!.nodeValue!;
-          alength += textValue.length;
-
-          if (alength <= startOffset) prevNodes.push(childNode);
-          else if (
-            startOffset >= alength - textValue.length &&
-            endOffset <= alength
-          )
-            prevNodes.push(
-              document.createTextNode(
-                textValue.substring(
-                  0,
-                  startOffset - (alength - textValue.length)
-                )
-              )
-            );
-        }
-        nodes.unshift(...prevNodes);
-      }
+      const prevContent = textItem.str.substring(0, startOffset);
+      nodes.unshift(document.createTextNode(prevContent));
     }
+
     if (endOffset > 0) {
-      nextContent = textItem.str.substring(endOffset);
-      const node = document.createTextNode(nextContent);
-      nodes.push(node);
+      const nextContent = textItem.str.substring(endOffset);
+      nodes.push(document.createTextNode(nextContent));
     }
 
-    div.replaceChildren(...nodes);
+    nodes.forEach((node) => fragment.appendChild(node));
+    div.replaceChildren(fragment);
   }
 
   function handleMultiDivHighlight(match: Match) {
@@ -271,52 +291,32 @@ function highlightMatches(
     const startItem = textContent.items[match.start.idx] as TextItem;
     const endItem = textContent.items[match.end.idx] as TextItem;
 
-    if (!startDiv || !endDiv || !startItem || !endItem) return;
+    if (!startDiv || !endDiv || !startItem || !endItem || !container) return;
 
-    // Find the common parent container of PDF divs
-    const container = startDiv.parentElement;
-    if (!container) return;
-
-    // Create a unique identifier for this highlight based on its position
     const highlightId = `highlight-${match.start.idx}-${match.start.offset}-${match.end.idx}-${match.end.offset}`;
-
-    // Check if highlight already exists
     let highlight = container.querySelector(`#${highlightId}`) as HTMLElement;
 
     if (!highlight) {
-      // Only create new highlight if it doesn't exist
       highlight = document.createElement("span");
       highlight.id = highlightId;
 
-      // Create temporary divs for measure the text and offsets...
-      const measureStartDiv = document.createElement("span");
-      measureStartDiv.textContent = startItem.str.substring(
-        0,
-        match.start.offset
+      const startMeasure = getMeasurements(
+        startDiv,
+        startItem.str.substring(0, match.start.offset)
       );
-      measureStartDiv.style.visibility = "hidden";
-      startDiv.appendChild(measureStartDiv);
+      const endMeasure = getMeasurements(
+        endDiv,
+        endItem.str.substring(0, match.end.offset)
+      );
 
-      const measureEndDiv = document.createElement("span");
-      measureEndDiv.textContent = endItem.str.substring(0, match.end.offset);
-      measureEndDiv.style.visibility = "hidden";
-      endDiv.appendChild(measureEndDiv);
-
-      const startMeasureRect = measureStartDiv.getBoundingClientRect();
-      const endMeasureRect = measureEndDiv.getBoundingClientRect();
-
-      startDiv.removeChild(measureStartDiv);
-      endDiv.removeChild(measureEndDiv);
-
-      // Set position and dimensions
       Object.assign(highlight.style, {
         position: "absolute",
         top: `${startDiv.offsetTop}px`,
-        left: `${startDiv.offsetLeft + startMeasureRect.width}px`,
+        left: `${startDiv.offsetLeft + startMeasure.width}px`,
         width: `${
           endDiv.offsetLeft +
-          endMeasureRect.width -
-          (startDiv.offsetLeft + startMeasureRect.width)
+          endMeasure.width -
+          (startDiv.offsetLeft + startMeasure.width)
         }px`,
         height: `${
           endDiv.offsetTop + endDiv.offsetHeight - startDiv.offsetTop
@@ -326,43 +326,23 @@ function highlightMatches(
         whiteSpace: "nowrap",
       });
 
-      // Add event listeners
+      highlight.dataset.text = getTextItemsSlice(
+        textContent,
+        match.start.idx,
+        match.end.idx
+      )
+        .map((item) => item.str)
+        .join(" ");
+      highlight.dataset.key = String(match.key);
+      highlight.dataset.keyword = match.keyword;
+
       if (onHighlightClick && match.key && match.keyword) {
         highlight.style.cursor = "pointer";
-        highlight.addEventListener("click", (event) => {
-          event.stopPropagation();
-          onHighlightClick(
-            event,
-            textContent.items
-              .slice(match.start.idx, match.end.idx + 1)
-              .map((item) => ("str" in item ? item.str : ""))
-              .join(" "),
-            match.key as string | number,
-            match.keyword as string
-          );
-        });
       }
-
-      highlight.addEventListener("mouseover", (event) => {
-        onHighlightMouseEnter?.(
-          event,
-          textContent.items
-            .slice(match.start.idx, match.end.idx + 1)
-            .map((item) => ("str" in item ? item.str : ""))
-            .join(" "),
-          match.key as string | number,
-          match.keyword as string
-        );
-      });
-
-      highlight.addEventListener("mouseleave", () => {
-        onHighlightMouseLeave?.();
-      });
 
       container.appendChild(highlight);
     }
 
-    // Update highlight class and text (whether it's new or existing)
     if (
       match.keyword &&
       match.keyword.toLowerCase() === activeHighlightText?.toLowerCase() &&
@@ -373,64 +353,58 @@ function highlightMatches(
         highlight.style.color = activeHighlightTextColor;
       }
 
-      // Update or create text container
       let textContainer = highlight.querySelector(
         ".highlight-text"
       ) as HTMLDivElement | null;
+
       if (!textContainer) {
         textContainer = document.createElement("div");
         textContainer.className = "highlight-text";
 
-        // Accumulate the text
-        let highlightText = "";
-        for (let i = match.start.idx; i <= match.end.idx; i++) {
-          const currentItem = textContent.items[i] as TextItem;
-          if (!currentItem) continue;
+        const highlightText = getTextItemsSlice(
+          textContent,
+          match.start.idx,
+          match.end.idx
+        )
+          .map((item, index) => {
+            let text = item.str;
+            if (index === 0) {
+              text = text.substring(match.start.offset);
+            }
+            if (index === match.end.idx - match.start.idx) {
+              text = text.substring(0, match.end.offset);
+            }
+            return text;
+          })
+          .join("");
 
-          let text = currentItem.str;
-          if (i === match.start.idx) {
-            text = text.substring(match.start.offset);
-          }
-          if (i === match.end.idx) {
-            text = text.substring(0, match.end.offset);
-          }
-          highlightText += text;
-        }
-
-        // Create text node
         const textNode = document.createTextNode(highlightText);
         textContainer.appendChild(textNode);
 
-        // Apply styles
-        const initialDiv = textDivs[match.start.idx];
-        if (initialDiv) {
-          const computedStyle = window.getComputedStyle(initialDiv);
-          const originalSize = parseFloat(computedStyle.fontSize);
-          const adjustedSize = originalSize - 1;
+        const computedStyle = getComputedStylesFor(textDivs[match.start.idx]);
+        const originalSize = parseFloat(computedStyle.fontSize);
 
-          Object.assign(textContainer.style, {
-            position: "absolute",
-            top: "0",
-            left: "0",
-            color: activeHighlightTextColor || "inherit",
-            fontFamily: computedStyle.fontFamily,
-            fontWeight: computedStyle.fontWeight,
-            fontSize: `${adjustedSize}px`,
-          });
-        }
+        Object.assign(textContainer.style, {
+          position: "absolute",
+          top: "0",
+          left: "0",
+          color: activeHighlightTextColor || "inherit",
+          fontFamily: computedStyle.fontFamily,
+          fontWeight: computedStyle.fontWeight,
+          fontSize: `${originalSize - 1}px`,
+        });
 
         highlight.appendChild(textContainer);
       } else {
-        textContainer.style.display = "block"; // Show if exists but was hidden
+        textContainer.style.display = "block";
       }
     } else {
       highlight.className = customHighlightClass;
-      // Keep textContainer, just update styles
       const textContainer = highlight.querySelector(
         ".highlight-text"
-      ) as HTMLDivElement | null;
+      ) as HTMLElement;
       if (textContainer) {
-        textContainer.style.display = "none"; // Instead of removing, just hide it
+        textContainer.style.display = "none";
       }
     }
   }
