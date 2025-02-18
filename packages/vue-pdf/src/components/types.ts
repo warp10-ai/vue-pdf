@@ -21,6 +21,8 @@ export interface Match {
   index: number;
   key?: string | number;
   keyword?: string;
+  isMultiDivByLineBreak: boolean;
+  isMultiDivSameLine: boolean;
 }
 
 export interface HighlightHoverPayload {

@@ -50,15 +50,20 @@ function convertMatches(
   textContent: TextContent
 ): Match[] {
   function endOfLineOffset(item: TextItem) {
-    // When textitem has a EOL flag and the string has a hyphen at the end
-    // the hyphen should be removed (-1 len) so the sentence could be searched as a joined one.
-    // In other cases the EOL flag introduce a whitespace (+1 len) between two different sentences
-
     if (item.hasEOL) {
       if (item.str.endsWith("-")) return -1;
       else return 1;
     }
     return 0;
+  }
+
+  function areInSameLine(startIdx: number, endIdx: number): boolean {
+    for (let i = startIdx; i < endIdx; i++) {
+      if ((textContent.items[i] as TextItem).hasEOL) {
+        return false;
+      }
+    }
+    return true;
   }
 
   let index = 0;
@@ -68,7 +73,6 @@ function convertMatches(
 
   const convertedMatches = [];
 
-  // iterate over all matches
   for (let m = 0; m < matches.length; m++) {
     let mindex = matches[m][0] as number;
 
@@ -96,6 +100,12 @@ function convertMatches(
       offset: mindex - tindex,
     };
 
+    const isMultiDiv = divStart.idx !== divEnd.idx;
+    const areSameLine = areInSameLine(divStart.idx, divEnd.idx);
+
+    const isMultiDivByLineBreak = isMultiDiv && !areSameLine;
+    const isMultiDivSameLine = isMultiDiv && areSameLine;
+
     convertedMatches.push({
       start: divStart,
       end: divEnd,
@@ -103,6 +113,8 @@ function convertMatches(
       index: matches[m][0] as number,
       key: "",
       keyword: "",
+      isMultiDivByLineBreak,
+      isMultiDivSameLine,
     });
   }
 
@@ -425,13 +437,43 @@ function highlightMatches(
 
   for (const match of matches) {
     if (match.start.idx === match.end.idx) {
+      // Single div case
       appendHighlightDiv(
         match,
         match.start.idx,
         match.start.offset,
         match.end.offset
       );
-    } else {
+    } else if (match.isMultiDivByLineBreak) {
+      // Has line breaks
+      if (match.isMultiDivSameLine) {
+        // Has multiple divs in at least one line
+        handleMultiDivHighlight(match);
+      } else {
+        // Single div per line
+        for (let idx = match.start.idx; idx <= match.end.idx; idx++) {
+          const textItem = textContent.items[idx] as TextItem;
+          if (!textItem) continue;
+
+          if (idx === match.start.idx) {
+            // First line
+            appendHighlightDiv(
+              match,
+              idx,
+              match.start.offset,
+              textItem.str.length
+            );
+          } else if (idx === match.end.idx) {
+            // Last line
+            appendHighlightDiv(match, idx, 0, match.end.offset);
+          } else {
+            // Middle lines
+            appendHighlightDiv(match, idx, 0, textItem.str.length);
+          }
+        }
+      }
+    } else if (match.isMultiDivSameLine) {
+      // Multiple divs in same line without line breaks
       handleMultiDivHighlight(match);
     }
   }

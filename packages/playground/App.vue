@@ -1,20 +1,24 @@
 <script setup lang="ts">
 import al from "@samples/al.pdf";
+import test from "@samples/test.pdf";
 import { VuePDF, usePDF } from "@warp10-ai/vue-pdf";
 import { ref, onMounted } from "vue";
 
 const resumePdf = ref<any>(null);
 
 const highlightText = ref([
-  "Galunisertib (LY2157299 monohydrate)",
-  "Precision for Medicine",
+  "Illumina",
+  "Genentech",
   "Advaxis Immunotherapies",
   "Covance, Inc.",
   "FGF-8 ligands",
   "CAR T",
   "Checkpoint inhibitors",
   "Antibody-drug conjugates",
+  "Companion Diagnostic Assays",
+  "Biomarkers and Therapeutic Targets",
 ]);
+
 const activeHighlightText = ref("CAR T");
 const highlightOptions = ref({
   completeWords: false,
@@ -34,7 +38,7 @@ const handleHighlightClick = (payload: any) => {
 };
 
 onMounted(() => {
-  resumePdf.value = usePDF(al);
+  resumePdf.value = usePDF(test);
 
   console.log(resumePdf);
 });
