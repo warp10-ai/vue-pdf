@@ -81,6 +81,7 @@ onMounted(() => {
           customActiveHighlightClass="custom-active-highlight"
           :activeHighlightText="activeHighlightText"
           activeHighlightTextColor="white"
+          :width="1000"
           @highlight-hover="handleHighlightHover"
           @highlight-leave="handleHighlightLeave"
           @highlight-click="handleHighlightClick"

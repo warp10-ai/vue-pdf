@@ -174,10 +174,10 @@ function highlightMatches(
     endOffset = -1
   ) {
     const textItem = textContent.items[idx] as TextItem;
-    let currentDiv = textDivs[idx];
+    const currentDiv = textDivs[idx];
     if (!currentDiv) return;
 
-    // Pre-calculate content once to avoid multiple string operations
+    // Determine content for data-text attribute
     let content = "";
     if (startOffset >= 0 && endOffset >= 0) {
       content = textItem.str.substring(startOffset, endOffset);
@@ -189,45 +189,27 @@ function highlightMatches(
       content = textItem.str.substring(0, endOffset);
     }
 
-    if (currentDiv.nodeType === Node.TEXT_NODE) {
-      const span = document.createElement("span");
-      currentDiv.before(span);
-      span.append(currentDiv);
-      textDivs[idx] = span;
-      currentDiv = span;
-    }
-
     const container = currentDiv.parentElement;
     if (!container) return;
 
-    const isActive = 
-      match.keyword &&
-      match.keyword.toLowerCase() === activeHighlightText?.toLowerCase() &&
-      customActiveHighlightClass;
-
-    // Use absolute positioning like in handleMultiDivHighlight
-    const highlightId = `highlight-${idx}-${startOffset}-${endOffset}-${match.key}`;
+    const highlightId = `highlight-${idx}-${startOffset}-${endOffset}`;
     let highlight = container.querySelector(`#${highlightId}`) as HTMLElement;
 
-    // Create a new highlight if it doesn't exist
     if (!highlight) {
-      highlight = document.createElement("span");
+      highlight = document.createElement("div");
       highlight.id = highlightId;
-      highlight.className = isActive 
-        ? customActiveHighlightClass 
-        : customHighlightClass;
-      
+      highlight.className = `pdf-highlight ${customHighlightClass}`;
+
       const textStartRect = getMeasurements(
         currentDiv,
         startOffset >= 0 ? textItem.str.substring(0, startOffset) : ""
       );
-      
+
       const textEndRect = getMeasurements(
         currentDiv,
         endOffset >= 0 ? textItem.str.substring(0, endOffset) : textItem.str
       );
-      
-      // Position the highlight absolutely
+
       Object.assign(highlight.style, {
         position: "absolute",
         top: `${currentDiv.offsetTop}px`,
@@ -236,12 +218,13 @@ function highlightMatches(
         height: `${currentDiv.offsetHeight}px`,
         pointerEvents: "all",
         zIndex: "1",
+        whiteSpace: "nowrap",
       });
-      
+
       highlight.dataset.text = content;
       highlight.dataset.key = String(match.key);
       highlight.dataset.keyword = match.keyword;
-      
+
       if (onHighlightClick && match.key && match.keyword) {
         highlight.style.cursor = "pointer";
         highlight.addEventListener("click", (event) => {
@@ -254,8 +237,8 @@ function highlightMatches(
           );
         });
       }
-      
-      highlight.addEventListener("mouseover", (event) => {
+
+      highlight.addEventListener("mouseenter", (event) => {
         onHighlightMouseEnter?.(
           event,
           content,
@@ -263,35 +246,40 @@ function highlightMatches(
           match.keyword as string
         );
       });
-      
+
       highlight.addEventListener("mouseleave", () => {
         onHighlightMouseLeave?.();
       });
-      
+
       container.appendChild(highlight);
-    } else {
-      // Update existing highlight if needed
-      highlight.className = isActive 
-        ? customActiveHighlightClass 
-        : customHighlightClass;
     }
-    
-    // Handle active highlight text display
-    if (isActive && activeHighlightTextColor) {
-      highlight.style.color = activeHighlightTextColor;
-      
+
+    const isActive =
+      match.keyword &&
+      match.keyword.toLowerCase() === activeHighlightText?.toLowerCase() &&
+      customActiveHighlightClass;
+
+    highlight.className = `pdf-highlight ${
+      isActive ? customActiveHighlightClass : customHighlightClass
+    }`;
+
+    if (isActive) {
+      if (activeHighlightTextColor) {
+        highlight.style.color = activeHighlightTextColor;
+      }
+
       let textContainer = highlight.querySelector(
         ".highlight-text"
       ) as HTMLDivElement | null;
-      
+
       if (!textContainer) {
         textContainer = document.createElement("div");
         textContainer.className = "highlight-text";
         textContainer.appendChild(document.createTextNode(content));
-        
+
         const computedStyle = getComputedStylesFor(currentDiv);
         const fontSize = parseFloat(computedStyle.fontSize) - 1;
-        
+
         Object.assign(textContainer.style, {
           position: "absolute",
           top: "0",
@@ -301,7 +289,7 @@ function highlightMatches(
           fontWeight: computedStyle.fontWeight,
           fontSize: `${fontSize}px`,
         });
-        
+
         highlight.appendChild(textContainer);
       } else {
         textContainer.style.display = "block";
@@ -331,7 +319,7 @@ function highlightMatches(
     let highlight = container.querySelector(`#${highlightId}`) as HTMLElement;
 
     if (!highlight) {
-      highlight = document.createElement("span");
+      highlight = document.createElement("div");
       highlight.id = highlightId;
       highlight.className = `pdf-highlight ${customHighlightClass}`;
 
@@ -383,7 +371,11 @@ function highlightMatches(
         });
       }
 
-      highlight.addEventListener("mouseover", (event) => {
+      let hoverTimer: number | null = null;
+
+      highlight.addEventListener("mouseenter", (event) => {
+        if (hoverTimer) return;
+
         onHighlightMouseEnter?.(
           event,
           highlightText,
@@ -393,7 +385,14 @@ function highlightMatches(
       });
 
       highlight.addEventListener("mouseleave", () => {
-        onHighlightMouseLeave?.();
+        if (hoverTimer) {
+          window.clearTimeout(hoverTimer);
+        }
+
+        hoverTimer = window.setTimeout(() => {
+          onHighlightMouseLeave?.();
+          hoverTimer = null;
+        }, 50);
       });
 
       container.appendChild(highlight);
