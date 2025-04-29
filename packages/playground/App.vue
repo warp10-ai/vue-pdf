@@ -1,25 +1,44 @@
 <script setup lang="ts">
 import al from "@samples/al.pdf";
 import test from "@samples/test.pdf";
+import dipietro from "@samples/dipietro.pdf";
 import { VuePDF, usePDF } from "@warp10-ai/vue-pdf";
 import { ref, onMounted } from "vue";
 
 const resumePdf = ref<any>(null);
 
 const highlightText = ref([
-  "Illumina",
-  "Genentech",
-  "Advaxis Immunotherapies",
-  "Covance, Inc.",
-  "FGF-8 ligands",
-  "CAR T",
-  "Checkpoint inhibitors",
-  "Antibody-drug conjugates",
-  "Companion Diagnostic Assays",
-  "Biomarkers and Therapeutic Targets",
+  "durvalumab",
+  "axitinib",
+  "sunitinib",
+  "torisel",
+  "avelumab",
+  "astrazeneca",
+  "tremelimumab",
+  "ipilimumab",
+  "roche",
+  "gsk",
+  "bevacizumab",
+  "e7080",
+  "paclitaxel",
+  "eisai",
+  "novartis",
+  "ab science",
+  "abraxane",
+  "taxol",
+  "italfarmaco",
+  "letrozole",
+  "anastrozole",
+  "msb0010718c",
+  "medi4736",
+  "dabrafenib",
+  "trametinib",
+  "cisplatin",
+  "doxorubicin",
+  "gefitinib",
 ]);
 
-const activeHighlightText = ref("CAR T");
+const activeHighlightText = ref("anastrozole");
 const highlightOptions = ref({
   completeWords: false,
   ignoreCase: true,
@@ -38,7 +57,7 @@ const handleHighlightClick = (payload: any) => {
 };
 
 onMounted(() => {
-  resumePdf.value = usePDF(al);
+  resumePdf.value = usePDF(dipietro);
 
   console.log(resumePdf);
 });
@@ -51,20 +70,22 @@ onMounted(() => {
       v-for="page in resumePdf?.pages"
       :key="page"
     >
-      <VuePDF
-        :pdf="resumePdf.pdf"
-        :page="page"
-        text-layer
-        :highlight-text="highlightText"
-        :highlightOptions="highlightOptions"
-        custom-highlight-class="custom-pdf-highlight"
-        customActiveHighlightClass="custom-active-highlight"
-        :activeHighlightText="activeHighlightText"
-        activeHighlightTextColor="white"
-        @highlight-hover="handleHighlightHover"
-        @highlight-leave="handleHighlightLeave"
-        @highlight-click="handleHighlightClick"
-      />
+      <KeywordHighlighter>
+        <VuePDF
+          :pdf="resumePdf.pdf"
+          :page="page"
+          text-layer
+          :highlight-text="highlightText"
+          :highlightOptions="highlightOptions"
+          custom-highlight-class="custom-pdf-highlight"
+          customActiveHighlightClass="custom-active-highlight"
+          :activeHighlightText="activeHighlightText"
+          activeHighlightTextColor="white"
+          @highlight-hover="handleHighlightHover"
+          @highlight-leave="handleHighlightLeave"
+          @highlight-click="handleHighlightClick"
+        />
+      </KeywordHighlighter>
     </div>
   </div>
 </template>

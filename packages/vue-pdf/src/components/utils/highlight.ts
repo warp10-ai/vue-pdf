@@ -177,9 +177,6 @@ function highlightMatches(
     let currentDiv = textDivs[idx];
     if (!currentDiv) return;
 
-    const fragment = document.createDocumentFragment();
-    const nodes: Node[] = [];
-
     // Pre-calculate content once to avoid multiple string operations
     let content = "";
     if (startOffset >= 0 && endOffset >= 0) {
@@ -200,72 +197,123 @@ function highlightMatches(
       currentDiv = span;
     }
 
-    const span = document.createElement("span");
-    const node = document.createTextNode(content);
+    const container = currentDiv.parentElement;
+    if (!container) return;
 
-    const isActive =
+    const isActive = 
       match.keyword &&
       match.keyword.toLowerCase() === activeHighlightText?.toLowerCase() &&
       customActiveHighlightClass;
 
-    span.className = isActive
-      ? customActiveHighlightClass
-      : customHighlightClass;
+    // Use absolute positioning like in handleMultiDivHighlight
+    const highlightId = `highlight-${idx}-${startOffset}-${endOffset}-${match.key}`;
+    let highlight = container.querySelector(`#${highlightId}`) as HTMLElement;
 
-    if (isActive && activeHighlightTextColor) {
-      span.style.color = activeHighlightTextColor;
-    }
-
-    span.dataset.text = content;
-    span.dataset.key = String(match.key);
-    span.dataset.keyword = match.keyword;
-
-    if (onHighlightClick && match.key && match.keyword) {
-      span.style.cursor = "pointer";
-
-      span.addEventListener("click", (event) => {
-        event.stopPropagation();
-        onHighlightClick(
+    // Create a new highlight if it doesn't exist
+    if (!highlight) {
+      highlight = document.createElement("span");
+      highlight.id = highlightId;
+      highlight.className = isActive 
+        ? customActiveHighlightClass 
+        : customHighlightClass;
+      
+      const textStartRect = getMeasurements(
+        currentDiv,
+        startOffset >= 0 ? textItem.str.substring(0, startOffset) : ""
+      );
+      
+      const textEndRect = getMeasurements(
+        currentDiv,
+        endOffset >= 0 ? textItem.str.substring(0, endOffset) : textItem.str
+      );
+      
+      // Position the highlight absolutely
+      Object.assign(highlight.style, {
+        position: "absolute",
+        top: `${currentDiv.offsetTop}px`,
+        left: `${currentDiv.offsetLeft + textStartRect.width}px`,
+        width: `${textEndRect.width - textStartRect.width}px`,
+        height: `${currentDiv.offsetHeight}px`,
+        pointerEvents: "all",
+        zIndex: "1",
+      });
+      
+      highlight.dataset.text = content;
+      highlight.dataset.key = String(match.key);
+      highlight.dataset.keyword = match.keyword;
+      
+      if (onHighlightClick && match.key && match.keyword) {
+        highlight.style.cursor = "pointer";
+        highlight.addEventListener("click", (event) => {
+          event.stopPropagation();
+          onHighlightClick(
+            event,
+            content,
+            match.key as string | number,
+            match.keyword as string
+          );
+        });
+      }
+      
+      highlight.addEventListener("mouseover", (event) => {
+        onHighlightMouseEnter?.(
           event,
           content,
           match.key as string | number,
           match.keyword as string
         );
       });
+      
+      highlight.addEventListener("mouseleave", () => {
+        onHighlightMouseLeave?.();
+      });
+      
+      container.appendChild(highlight);
+    } else {
+      // Update existing highlight if needed
+      highlight.className = isActive 
+        ? customActiveHighlightClass 
+        : customHighlightClass;
     }
-
-    span.addEventListener("mouseover", (event) => {
-      onHighlightMouseEnter?.(
-        event,
-        content,
-        match.key as string | number,
-        match.keyword as string
-      );
-    });
-
-    span.addEventListener("mouseleave", () => {
-      onHighlightMouseLeave?.();
-    });
-
-    span.append(node);
-    nodes.push(span);
-
-    // Add text before highlight
-    if (startOffset > 0) {
-      const prevContent = textItem.str.substring(0, startOffset);
-      const prevNode = document.createTextNode(prevContent);
-      nodes.unshift(prevNode);
+    
+    // Handle active highlight text display
+    if (isActive && activeHighlightTextColor) {
+      highlight.style.color = activeHighlightTextColor;
+      
+      let textContainer = highlight.querySelector(
+        ".highlight-text"
+      ) as HTMLDivElement | null;
+      
+      if (!textContainer) {
+        textContainer = document.createElement("div");
+        textContainer.className = "highlight-text";
+        textContainer.appendChild(document.createTextNode(content));
+        
+        const computedStyle = getComputedStylesFor(currentDiv);
+        const fontSize = parseFloat(computedStyle.fontSize) - 1;
+        
+        Object.assign(textContainer.style, {
+          position: "absolute",
+          top: "0",
+          left: "0",
+          color: activeHighlightTextColor || "inherit",
+          fontFamily: computedStyle.fontFamily,
+          fontWeight: computedStyle.fontWeight,
+          fontSize: `${fontSize}px`,
+        });
+        
+        highlight.appendChild(textContainer);
+      } else {
+        textContainer.style.display = "block";
+      }
+    } else {
+      const textContainer = highlight.querySelector(
+        ".highlight-text"
+      ) as HTMLElement;
+      if (textContainer) {
+        textContainer.style.display = "none";
+      }
     }
-
-    // Add text after highlight
-    if (endOffset > 0) {
-      const nextContent = textItem.str.substring(endOffset);
-      const nextNode = document.createTextNode(nextContent);
-      nodes.push(nextNode);
-    }
-
-    nodes.forEach((node) => fragment.appendChild(node));
-    currentDiv.replaceChildren(fragment);
   }
 
   function handleMultiDivHighlight(match: Match) {
