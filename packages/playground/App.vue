@@ -38,7 +38,7 @@ const highlightText = ref([
   "gefitinib",
 ]);
 
-const activeHighlightText = ref("anastrozole");
+const activeHighlightText = ref("axitinib");
 const highlightOptions = ref({
   completeWords: false,
   ignoreCase: true,

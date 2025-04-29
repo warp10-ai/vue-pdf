@@ -2,35 +2,52 @@ import type { TextItem } from "pdfjs-dist/types/src/display/api";
 import type { TextContent } from "pdfjs-dist/types/src/display/text_layer";
 import type { HighlightOptions, Match } from "../types";
 
+// Cache management
+// ----------------
 const measurementsCache = new Map<string, DOMRect>();
-const computedStylesCache = new WeakMap<HTMLElement, CSSStyleDeclaration>();
+let computedStylesCache = new WeakMap<HTMLElement, CSSStyleDeclaration>();
 
-function getMeasurements(div: HTMLElement, text: string): DOMRect {
-  const key = `${div.offsetTop}-${text}`;
-  if (!measurementsCache.has(key)) {
-    const measureDiv = document.createElement("span");
-    measureDiv.textContent = text;
-    measureDiv.style.visibility = "hidden";
-    div.appendChild(measureDiv);
-    const rect = measureDiv.getBoundingClientRect();
-    div.removeChild(measureDiv);
-    measurementsCache.set(key, rect);
-  }
-  return measurementsCache.get(key)!;
+interface DOMHelpers {
+  getMeasurements(div: HTMLElement, text: string): DOMRect;
+  getComputedStylesFor(element: HTMLElement): CSSStyleDeclaration;
+  clearCache(): void;
 }
 
-function getComputedStylesFor(element: HTMLElement): CSSStyleDeclaration {
-  if (!computedStylesCache.has(element)) {
-    computedStylesCache.set(element, window.getComputedStyle(element));
-  }
-  return computedStylesCache.get(element)!;
-}
+const domHelpers: DOMHelpers = {
+  getMeasurements(div: HTMLElement, text: string): DOMRect {
+    const key = `${div.offsetTop}-${text}`;
+    if (!measurementsCache.has(key)) {
+      const measureDiv = document.createElement("span");
+      measureDiv.textContent = text;
+      measureDiv.style.visibility = "hidden";
+      div.appendChild(measureDiv);
+      const rect = measureDiv.getBoundingClientRect();
+      div.removeChild(measureDiv);
+      measurementsCache.set(key, rect);
+    }
+    return measurementsCache.get(key)!;
+  },
 
+  getComputedStylesFor(element: HTMLElement): CSSStyleDeclaration {
+    if (!computedStylesCache.has(element)) {
+      computedStylesCache.set(element, window.getComputedStyle(element));
+    }
+    return computedStylesCache.get(element)!;
+  },
+
+  clearCache(): void {
+    measurementsCache.clear();
+    computedStylesCache = new WeakMap<HTMLElement, CSSStyleDeclaration>();
+  },
+};
+
+// Text search functions
+// --------------------
 function searchQuery(
   textContent: TextContent,
   query: string,
   options: HighlightOptions
-) {
+): Array<[number, number, string]> {
   const strs = [];
   for (const textItem of textContent.items as TextItem[]) {
     if (textItem.hasEOL) {
@@ -58,22 +75,21 @@ function searchQuery(
 
   const regex = new RegExp(fquery, regexFlags.join(""));
 
-  const matches = [];
+  const matches: Array<[number, number, string]> = [];
   let match;
 
-  // eslint-disable-next-line no-cond-assign
-
-  while ((match = regex.exec(textJoined)) !== null)
+  while ((match = regex.exec(textJoined)) !== null) {
     matches.push([match.index, match[0].length, match[0]]);
+  }
 
   return matches;
 }
 
 function convertMatches(
-  matches: (number | string)[][],
+  matches: Array<[number, number, string]>,
   textContent: TextContent
 ): Match[] {
-  function endOfLineOffset(item: TextItem) {
+  function endOfLineOffset(item: TextItem): number {
     if (item.hasEOL) {
       if (item.str.endsWith("-")) return -1;
       else return 1;
@@ -95,10 +111,10 @@ function convertMatches(
   const textItems = textContent.items as TextItem[];
   const end = textItems.length - 1;
 
-  const convertedMatches = [];
+  const convertedMatches: Match[] = [];
 
   for (let m = 0; m < matches.length; m++) {
-    let mindex = matches[m][0] as number;
+    let mindex = matches[m][0];
 
     while (index !== end && mindex >= tindex + textItems[index].str.length) {
       const item = textItems[index];
@@ -111,7 +127,7 @@ function convertMatches(
       offset: mindex - tindex,
     };
 
-    mindex += matches[m][1] as number;
+    mindex += matches[m][1];
 
     while (index !== end && mindex > tindex + textItems[index].str.length) {
       const item = textItems[index];
@@ -133,8 +149,8 @@ function convertMatches(
     convertedMatches.push({
       start: divStart,
       end: divEnd,
-      str: matches[m][2] as string,
-      index: matches[m][0] as number,
+      str: matches[m][2],
+      index: matches[m][0],
       key: "",
       keyword: "",
       isMultiDivByLineBreak,
@@ -143,6 +159,116 @@ function convertMatches(
   }
 
   return convertedMatches;
+}
+
+// Highlight rendering functions
+// ----------------------------
+interface HighlightEventHandlers {
+  onClick?: (
+    event: MouseEvent,
+    text: string,
+    key: string | number,
+    keyword: string
+  ) => void;
+  onMouseEnter?: (
+    event: MouseEvent,
+    text: string,
+    key: string | number,
+    keyword: string
+  ) => void;
+  onMouseLeave?: () => void;
+}
+
+interface HighlightRenderOptions {
+  customHighlightClass?: string;
+  activeHighlightTextColor?: string;
+  customActiveHighlightClass?: string;
+  activeHighlightText?: string;
+  eventHandlers?: HighlightEventHandlers;
+}
+
+function createHighlightElement(
+  id: string,
+  styleProps: Partial<CSSStyleDeclaration>,
+  content: string,
+  match: Match,
+  options: HighlightRenderOptions
+): HTMLElement {
+  const highlight = document.createElement("div");
+  highlight.id = id;
+  highlight.className = `pdf-highlight ${
+    options.customHighlightClass || "highlight"
+  }`;
+
+  Object.assign(highlight.style, styleProps);
+
+  highlight.dataset.text = content;
+  highlight.dataset.key = String(match.key);
+  highlight.dataset.keyword = match.keyword;
+
+  const { eventHandlers } = options;
+
+  if (eventHandlers?.onClick && match.key && match.keyword) {
+    highlight.style.cursor = "pointer";
+    highlight.addEventListener("click", (event) => {
+      event.stopPropagation();
+      eventHandlers.onClick!(
+        event,
+        content,
+        match.key as string | number,
+        match.keyword as string
+      );
+    });
+  }
+
+  highlight.addEventListener("mouseenter", (event) => {
+    eventHandlers?.onMouseEnter?.(
+      event,
+      content,
+      match.key as string | number,
+      match.keyword as string
+    );
+  });
+
+  highlight.addEventListener("mouseleave", () => {
+    eventHandlers?.onMouseLeave?.();
+  });
+
+  return highlight;
+}
+
+function addTextOverlay(
+  highlight: HTMLElement,
+  content: string,
+  referenceDiv: HTMLElement,
+  textColor?: string
+): void {
+  let textContainer = highlight.querySelector(
+    ".highlight-text"
+  ) as HTMLDivElement | null;
+
+  if (!textContainer) {
+    textContainer = document.createElement("div");
+    textContainer.className = "highlight-text";
+    textContainer.appendChild(document.createTextNode(content));
+
+    const computedStyle = domHelpers.getComputedStylesFor(referenceDiv);
+    const fontSize = parseFloat(computedStyle.fontSize) - 1;
+
+    Object.assign(textContainer.style, {
+      position: "absolute",
+      top: "0",
+      left: "0",
+      color: textColor || "inherit",
+      fontFamily: computedStyle.fontFamily,
+      fontWeight: computedStyle.fontWeight,
+      fontSize: `${fontSize}px`,
+    });
+
+    highlight.appendChild(textContainer);
+  } else {
+    textContainer.style.display = "block";
+  }
 }
 
 function highlightMatches(
@@ -167,6 +293,18 @@ function highlightMatches(
   ) => void,
   onHighlightMouseLeave?: () => void
 ) {
+  const renderOptions: HighlightRenderOptions = {
+    customHighlightClass,
+    activeHighlightTextColor,
+    customActiveHighlightClass,
+    activeHighlightText,
+    eventHandlers: {
+      onClick: onHighlightClick,
+      onMouseEnter: onHighlightMouseEnter,
+      onMouseLeave: onHighlightMouseLeave,
+    },
+  };
+
   function appendHighlightDiv(
     match: Match,
     idx: number,
@@ -196,60 +334,39 @@ function highlightMatches(
     let highlight = container.querySelector(`#${highlightId}`) as HTMLElement;
 
     if (!highlight) {
-      highlight = document.createElement("div");
-      highlight.id = highlightId;
-      highlight.className = `pdf-highlight ${customHighlightClass}`;
-
-      const textStartRect = getMeasurements(
+      const textStartRect = domHelpers.getMeasurements(
         currentDiv,
         startOffset >= 0 ? textItem.str.substring(0, startOffset) : ""
       );
 
-      const textEndRect = getMeasurements(
+      const textEndRect = domHelpers.getMeasurements(
         currentDiv,
         endOffset >= 0 ? textItem.str.substring(0, endOffset) : textItem.str
       );
 
-      Object.assign(highlight.style, {
+      // Add 4 extra pixels to the width for better visibility
+      const width = textEndRect.width - textStartRect.width;
+
+      const styleProps = {
         position: "absolute",
         top: `${currentDiv.offsetTop}px`,
-        left: `${currentDiv.offsetLeft + textStartRect.width}px`,
-        width: `${textEndRect.width - textStartRect.width}px`,
+        // Offset by 2px to the left
+        left: `${currentDiv.offsetLeft + textStartRect.width - 2}px`,
+        // Add 4px to width for better highlight visibility
+        width: `${width + 4}px`,
         height: `${currentDiv.offsetHeight}px`,
         pointerEvents: "all",
         zIndex: "1",
         whiteSpace: "nowrap",
-      });
+      };
 
-      highlight.dataset.text = content;
-      highlight.dataset.key = String(match.key);
-      highlight.dataset.keyword = match.keyword;
-
-      if (onHighlightClick && match.key && match.keyword) {
-        highlight.style.cursor = "pointer";
-        highlight.addEventListener("click", (event) => {
-          event.stopPropagation();
-          onHighlightClick(
-            event,
-            content,
-            match.key as string | number,
-            match.keyword as string
-          );
-        });
-      }
-
-      highlight.addEventListener("mouseenter", (event) => {
-        onHighlightMouseEnter?.(
-          event,
-          content,
-          match.key as string | number,
-          match.keyword as string
-        );
-      });
-
-      highlight.addEventListener("mouseleave", () => {
-        onHighlightMouseLeave?.();
-      });
+      highlight = createHighlightElement(
+        highlightId,
+        styleProps,
+        content,
+        match,
+        renderOptions
+      );
 
       container.appendChild(highlight);
     }
@@ -268,32 +385,7 @@ function highlightMatches(
         highlight.style.color = activeHighlightTextColor;
       }
 
-      let textContainer = highlight.querySelector(
-        ".highlight-text"
-      ) as HTMLDivElement | null;
-
-      if (!textContainer) {
-        textContainer = document.createElement("div");
-        textContainer.className = "highlight-text";
-        textContainer.appendChild(document.createTextNode(content));
-
-        const computedStyle = getComputedStylesFor(currentDiv);
-        const fontSize = parseFloat(computedStyle.fontSize) - 1;
-
-        Object.assign(textContainer.style, {
-          position: "absolute",
-          top: "0",
-          left: "0",
-          color: activeHighlightTextColor || "inherit",
-          fontFamily: computedStyle.fontFamily,
-          fontWeight: computedStyle.fontWeight,
-          fontSize: `${fontSize}px`,
-        });
-
-        highlight.appendChild(textContainer);
-      } else {
-        textContainer.style.display = "block";
-      }
+      addTextOverlay(highlight, content, currentDiv, activeHighlightTextColor);
     } else {
       const textContainer = highlight.querySelector(
         ".highlight-text"
@@ -319,81 +411,47 @@ function highlightMatches(
     let highlight = container.querySelector(`#${highlightId}`) as HTMLElement;
 
     if (!highlight) {
-      highlight = document.createElement("div");
-      highlight.id = highlightId;
-      highlight.className = `pdf-highlight ${customHighlightClass}`;
-
-      const startMeasure = getMeasurements(
+      const startMeasure = domHelpers.getMeasurements(
         startDiv,
         startItem.str.substring(0, match.start.offset)
       );
-      const endMeasure = getMeasurements(
+
+      const endMeasure = domHelpers.getMeasurements(
         endDiv,
         endItem.str.substring(0, match.end.offset)
       );
 
-      Object.assign(highlight.style, {
+      // Calculate the total width for multi-div highlights
+      const totalWidth =
+        endDiv.offsetLeft +
+        endMeasure.width -
+        (startDiv.offsetLeft + startMeasure.width);
+
+      const styleProps = {
         position: "absolute",
         top: `${startDiv.offsetTop}px`,
-        left: `${startDiv.offsetLeft + startMeasure.width}px`,
-        width: `${
-          endDiv.offsetLeft +
-          endMeasure.width -
-          (startDiv.offsetLeft + startMeasure.width)
-        }px`,
-        height: `${
-          endDiv.offsetTop + endDiv.offsetHeight - startDiv.offsetTop
-        }px`,
+        // Offset by 2px to the left
+        left: `${startDiv.offsetLeft + startMeasure.width - 2}px`,
+        // Add 4px to width for better highlight visibility
+        width: `${totalWidth + 4}px`,
+        height: `${endDiv.offsetHeight}px`,
         pointerEvents: "all",
         zIndex: "1",
         whiteSpace: "nowrap",
-      });
+      };
 
       const highlightText = textContent.items
         .slice(match.start.idx, match.end.idx + 1)
         .map((item) => ("str" in item ? item.str : ""))
         .join(" ");
 
-      highlight.dataset.text = highlightText;
-      highlight.dataset.key = String(match.key);
-      highlight.dataset.keyword = match.keyword;
-
-      if (onHighlightClick && match.key && match.keyword) {
-        highlight.style.cursor = "pointer";
-        highlight.addEventListener("click", (event) => {
-          event.stopPropagation();
-          onHighlightClick(
-            event,
-            highlightText,
-            match.key as string | number,
-            match.keyword as string
-          );
-        });
-      }
-
-      let hoverTimer: number | null = null;
-
-      highlight.addEventListener("mouseenter", (event) => {
-        if (hoverTimer) return;
-
-        onHighlightMouseEnter?.(
-          event,
-          highlightText,
-          match.key as string | number,
-          match.keyword as string
-        );
-      });
-
-      highlight.addEventListener("mouseleave", () => {
-        if (hoverTimer) {
-          window.clearTimeout(hoverTimer);
-        }
-
-        hoverTimer = window.setTimeout(() => {
-          onHighlightMouseLeave?.();
-          hoverTimer = null;
-        }, 50);
-      });
+      highlight = createHighlightElement(
+        highlightId,
+        styleProps,
+        highlightText,
+        match,
+        renderOptions
+      );
 
       container.appendChild(highlight);
     }
@@ -412,45 +470,25 @@ function highlightMatches(
         highlight.style.color = activeHighlightTextColor;
       }
 
-      let textContainer = highlight.querySelector(
-        ".highlight-text"
-      ) as HTMLDivElement | null;
-      if (!textContainer) {
-        textContainer = document.createElement("div");
-        textContainer.className = "highlight-text";
+      const slicedContent = textContent.items
+        .slice(match.start.idx, match.end.idx + 1)
+        .map((item, index) => {
+          if (!("str" in item)) return "";
+          let text = item.str;
+          if (index === 0) text = text.substring(match.start.offset);
+          if (index === match.end.idx - match.start.idx) {
+            text = text.substring(0, match.end.offset);
+          }
+          return text;
+        })
+        .join("");
 
-        const slicedContent = textContent.items
-          .slice(match.start.idx, match.end.idx + 1)
-          .map((item, index) => {
-            if (!("str" in item)) return "";
-            let text = item.str;
-            if (index === 0) text = text.substring(match.start.offset);
-            if (index === match.end.idx - match.start.idx) {
-              text = text.substring(0, match.end.offset);
-            }
-            return text;
-          })
-          .join("");
-
-        textContainer.appendChild(document.createTextNode(slicedContent));
-
-        const computedStyle = getComputedStylesFor(textDivs[match.start.idx]);
-        const fontSize = parseFloat(computedStyle.fontSize) - 1;
-
-        Object.assign(textContainer.style, {
-          position: "absolute",
-          top: "0",
-          left: "0",
-          color: activeHighlightTextColor || "inherit",
-          fontFamily: computedStyle.fontFamily,
-          fontWeight: computedStyle.fontWeight,
-          fontSize: `${fontSize}px`,
-        });
-
-        highlight.appendChild(textContainer);
-      } else {
-        textContainer.style.display = "block";
-      }
+      addTextOverlay(
+        highlight,
+        slicedContent,
+        textDivs[match.start.idx],
+        activeHighlightTextColor
+      );
     } else {
       const textContainer = highlight.querySelector(
         ".highlight-text"
@@ -517,12 +555,14 @@ function resetDivs(textContent: TextContent, textDivs: HTMLElement[]) {
   }
 }
 
+// Main API functions
+// -----------------
 function findMatches(
   queries: string[] | Array<{ keyword: string; key: string | number }>,
   textContent: TextContent,
   options: HighlightOptions
-) {
-  const convertedMatches = [];
+): Match[] {
+  const convertedMatches: Match[] = [];
 
   const normalizedQueries =
     Array.isArray(queries) && typeof queries[0] === "string"
@@ -549,4 +589,4 @@ function findMatches(
   return convertedMatches;
 }
 
-export { findMatches, highlightMatches, resetDivs };
+export { findMatches, highlightMatches, resetDivs, domHelpers };
