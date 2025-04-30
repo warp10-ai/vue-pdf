@@ -255,15 +255,32 @@ function addTextOverlay(
     const computedStyle = domHelpers.getComputedStylesFor(referenceDiv);
     const fontSize = parseFloat(computedStyle.fontSize) - 1;
 
-    Object.assign(textContainer.style, {
+    // Copy only the properties we need for text styling
+    const textStyles: Record<string, string> = {
       position: "absolute",
       top: "0",
-      left: "0",
+      left: "4px",
       color: textColor || "inherit",
-      fontFamily: computedStyle.fontFamily,
-      fontWeight: computedStyle.fontWeight,
       fontSize: `${fontSize}px`,
+    };
+
+    // Copy specific text properties directly from computed style
+    const propertiesToCopy = [
+      "fontFamily",
+      "fontWeight",
+      "fontStyle",
+      "letterSpacing",
+      "lineHeight",
+    ];
+
+    propertiesToCopy.forEach((prop) => {
+      const value = computedStyle.getPropertyValue(prop);
+      if (value) {
+        textStyles[prop] = value;
+      }
     });
+
+    Object.assign(textContainer.style, textStyles);
 
     highlight.appendChild(textContainer);
   } else {
@@ -562,30 +579,62 @@ function findMatches(
   textContent: TextContent,
   options: HighlightOptions
 ): Match[] {
-  const convertedMatches: Match[] = [];
-
+  // Sort queries by length (longest first)
   const normalizedQueries =
     Array.isArray(queries) && typeof queries[0] === "string"
       ? (queries as string[]).map((keyword) => ({ keyword, key: keyword }))
-      : queries;
+      : queries as Array<{ keyword: string; key: string | number }>;
+  
+  // Sort by keyword length (longest first) to prioritize longer matches
+  normalizedQueries.sort((a, b) => b.keyword.length - a.keyword.length);
 
-  for (const query of normalizedQueries) {
-    const keyword = typeof query === "string" ? query : query.keyword;
-    const key = typeof query === "string" ? keyword : query.key;
+  const convertedMatches: Match[] = [];
+  // Keep track of ranges that are already highlighted
+  const highlightedRanges: Array<{ start: number; end: number }> = [];
 
-    const matches = searchQuery(textContent, keyword, options);
-
-    const matchesWithKeys = convertMatches(matches, textContent).map(
-      (match) => ({
-        ...match,
-        key: key as string | number,
-        keyword: keyword as string,
-      })
+  function isOverlapping(start: number, end: number): boolean {
+    // Check if the new range (start,end) overlaps with any existing range
+    // Overlap cases:
+    // 1. start is inside an existing range
+    // 2. end is inside an existing range
+    // 3. new range completely contains an existing range
+    // 4. new range is completely contained within an existing range
+    return highlightedRanges.some(
+      range => 
+        // Case 1 & 4: start is inside the existing range
+        (start >= range.start && start < range.end) || 
+        // Case 2 & 4: end is inside the existing range
+        (end > range.start && end <= range.end) ||
+        // Case 3: new range completely contains the existing range
+        (start <= range.start && end >= range.end)
     );
-
-    convertedMatches.push(...matchesWithKeys);
   }
 
+  for (const query of normalizedQueries) {
+    const keyword = query.keyword;
+    const key = query.key;
+
+    const matches = searchQuery(textContent, keyword, options);
+    const currentMatches = convertMatches(matches, textContent);
+    
+    // Filter out matches that would overlap with existing highlights
+    for (const match of currentMatches) {
+      const start = match.index;
+      const end = match.index + match.str.length;
+      
+      // Check if this range overlaps with any existing highlight
+      if (!isOverlapping(start, end)) {
+        // No overlap - add to results and mark range as highlighted
+        highlightedRanges.push({ start, end });
+        convertedMatches.push({
+          ...match,
+          key: key,
+          keyword: keyword,
+        });
+      }
+    }
+  }
+  
   return convertedMatches;
 }
 

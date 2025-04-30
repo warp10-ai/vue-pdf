@@ -24,6 +24,7 @@ const highlightText = ref([
   "eisai",
   "novartis",
   "ab science",
+  "science",
   "abraxane",
   "taxol",
   "italfarmaco",
@@ -38,9 +39,9 @@ const highlightText = ref([
   "gefitinib",
 ]);
 
-const activeHighlightText = ref("axitinib");
+const activeHighlightText = ref("science");
 const highlightOptions = ref({
-  completeWords: false,
+  completeWords: true,
   ignoreCase: true,
 });
 
