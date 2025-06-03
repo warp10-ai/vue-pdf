@@ -253,32 +253,35 @@ function addTextOverlay(
     textContainer.appendChild(document.createTextNode(content));
 
     const computedStyle = domHelpers.getComputedStylesFor(referenceDiv);
-    const fontSize = parseFloat(computedStyle.fontSize) - 1;
+    const fontSize = parseFloat(computedStyle.fontSize);
 
-    // Copy only the properties we need for text styling
+    // Copy all relevant text properties from the original element
     const textStyles: Record<string, string> = {
       position: "absolute",
       top: "0",
       left: "4px",
-      color: textColor || "inherit",
-      fontSize: `${fontSize}px`,
+      color: textColor || computedStyle.color,
+      fontSize: `${fontSize - 1}px`,
+      fontFamily: computedStyle.fontFamily,
+      fontWeight: computedStyle.fontWeight,
+      fontStyle: computedStyle.fontStyle,
+      letterSpacing: computedStyle.letterSpacing,
+      lineHeight: computedStyle.lineHeight,
+      textAlign: computedStyle.textAlign,
+      textTransform: computedStyle.textTransform,
+      fontVariant: computedStyle.fontVariant,
+      fontStretch: computedStyle.fontStretch,
+      wordSpacing: computedStyle.wordSpacing,
+      textDecoration: computedStyle.textDecoration,
+      textShadow: computedStyle.textShadow,
+      whiteSpace: computedStyle.whiteSpace,
+      wordBreak: computedStyle.wordBreak,
+      overflowWrap: computedStyle.overflowWrap,
+      direction: computedStyle.direction,
+      writingMode: computedStyle.writingMode,
+      textOrientation: computedStyle.textOrientation,
+      textRendering: computedStyle.textRendering,
     };
-
-    // Copy specific text properties directly from computed style
-    const propertiesToCopy = [
-      "fontFamily",
-      "fontWeight",
-      "fontStyle",
-      "letterSpacing",
-      "lineHeight",
-    ];
-
-    propertiesToCopy.forEach((prop) => {
-      const value = computedStyle.getPropertyValue(prop);
-      if (value) {
-        textStyles[prop] = value;
-      }
-    });
 
     Object.assign(textContainer.style, textStyles);
 
@@ -367,10 +370,8 @@ function highlightMatches(
       const styleProps = {
         position: "absolute",
         top: `${currentDiv.offsetTop}px`,
-        // Offset by 2px to the left
-        left: `${currentDiv.offsetLeft + textStartRect.width - 2}px`,
-        // Add 4px to width for better highlight visibility
-        width: `${width + 4}px`,
+        left: `${currentDiv.offsetLeft - 3 + textStartRect.width}px`,
+        width: `${width + 6}px`,
         height: `${currentDiv.offsetHeight}px`,
         pointerEvents: "all",
         zIndex: "1",
@@ -447,9 +448,7 @@ function highlightMatches(
       const styleProps = {
         position: "absolute",
         top: `${startDiv.offsetTop}px`,
-        // Offset by 2px to the left
         left: `${startDiv.offsetLeft + startMeasure.width - 2}px`,
-        // Add 4px to width for better highlight visibility
         width: `${totalWidth + 4}px`,
         height: `${endDiv.offsetHeight}px`,
         pointerEvents: "all",
@@ -583,8 +582,8 @@ function findMatches(
   const normalizedQueries =
     Array.isArray(queries) && typeof queries[0] === "string"
       ? (queries as string[]).map((keyword) => ({ keyword, key: keyword }))
-      : queries as Array<{ keyword: string; key: string | number }>;
-  
+      : (queries as Array<{ keyword: string; key: string | number }>);
+
   // Sort by keyword length (longest first) to prioritize longer matches
   normalizedQueries.sort((a, b) => b.keyword.length - a.keyword.length);
 
@@ -600,9 +599,9 @@ function findMatches(
     // 3. new range completely contains an existing range
     // 4. new range is completely contained within an existing range
     return highlightedRanges.some(
-      range => 
+      (range) =>
         // Case 1 & 4: start is inside the existing range
-        (start >= range.start && start < range.end) || 
+        (start >= range.start && start < range.end) ||
         // Case 2 & 4: end is inside the existing range
         (end > range.start && end <= range.end) ||
         // Case 3: new range completely contains the existing range
@@ -616,12 +615,12 @@ function findMatches(
 
     const matches = searchQuery(textContent, keyword, options);
     const currentMatches = convertMatches(matches, textContent);
-    
+
     // Filter out matches that would overlap with existing highlights
     for (const match of currentMatches) {
       const start = match.index;
       const end = match.index + match.str.length;
-      
+
       // Check if this range overlaps with any existing highlight
       if (!isOverlapping(start, end)) {
         // No overlap - add to results and mark range as highlighted
@@ -634,7 +633,7 @@ function findMatches(
       }
     }
   }
-  
+
   return convertedMatches;
 }
 

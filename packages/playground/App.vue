@@ -2,10 +2,17 @@
 import al from "@samples/al.pdf";
 import test from "@samples/test.pdf";
 import dipietro from "@samples/dipietro.pdf";
+import udayan from "@samples/udayan.pdf";
+import chao from "@samples/chao.pdf";
+
 import { VuePDF, usePDF } from "@warp10-ai/vue-pdf";
 import { ref, onMounted } from "vue";
 
-const resumePdf = ref<any>(null);
+const diPietroPdf = ref<any>(null);
+
+const udayanPdf = ref<any>(null);
+
+const chaoPdf = ref<any>(null);
 
 const highlightText = ref([
   "durvalumab",
@@ -37,9 +44,69 @@ const highlightText = ref([
   "cisplatin",
   "doxorubicin",
   "gefitinib",
+  "nextcure inc.",
+  "bristol-myers squibb",
+  "crizotinib",
+  "pembrolizumab",
+  "nivolumab",
+  "agenus",
+  "osimertinib",
+  "pdx",
+  "epidermal growth factor",
+  "tyrosine",
+  "m6620",
+  "topotecan",
+  "pas",
+  "selumetinib",
+  "erlotinib",
+  "sepantronium bromide",
+  "ym155",
+  "carboplatin",
+  "eli lilly and company",
+  "cyramza",
+  "ramucirumab",
+  "sintilimab",
+  "retevmo",
+  "selpercatinib",
+  "alisertib",
+  "mln8237",
+  "puma biotechnology",
+  "merck",
+  "pegilodecakin",
+  "eli lilly",
+  "ap26113",
+  "sunitinib malate",
+  "alectinib",
+  "atezolizumab",
+  "heparin",
+  "cetuximab",
+  "neratinib",
+  "temsirolimus",
+  "mpdl3280a",
+  "necitumumab",
+  "azd9291",
+  "pemetrexed",
+  "gemcitabine hydrochloride",
+  "pemetrexed disodium",
+  "celecoxib",
+  "ly3009806",
+  "mk-3475",
+  "imatinib",
+  "ch5424802",
+  "nintedanib",
+  "am0010",
+  "loxo-292",
+  "thyroid",
+  "vorinostat",
+  "ponatinib",
+  "oct",
+  "reolysin",
+  "aqua",
+  "peg",
+  "platinum",
 ]);
 
-const activeHighlightText = ref("science");
+const activeHighlightText = ref("trametinib");
 const highlightOptions = ref({
   completeWords: true,
   ignoreCase: true,
@@ -58,9 +125,11 @@ const handleHighlightClick = (payload: any) => {
 };
 
 onMounted(() => {
-  resumePdf.value = usePDF(dipietro);
+  diPietroPdf.value = usePDF(dipietro);
 
-  console.log(resumePdf);
+  udayanPdf.value = usePDF(udayan);
+
+  chaoPdf.value = usePDF(chao);
 });
 </script>
 
@@ -68,26 +137,76 @@ onMounted(() => {
   <div class="flex flex-col gap-4">
     <div
       class="border rounded-lg overflow-y-auto relative"
-      v-for="page in resumePdf?.pages"
+      v-for="page in diPietroPdf?.pages"
       :key="page"
     >
-      <KeywordHighlighter>
-        <VuePDF
-          :pdf="resumePdf.pdf"
-          :page="page"
-          text-layer
-          :highlight-text="highlightText"
-          :highlightOptions="highlightOptions"
-          custom-highlight-class="custom-pdf-highlight"
-          customActiveHighlightClass="custom-active-highlight"
-          :activeHighlightText="activeHighlightText"
-          activeHighlightTextColor="white"
-          :width="1000"
-          @highlight-hover="handleHighlightHover"
-          @highlight-leave="handleHighlightLeave"
-          @highlight-click="handleHighlightClick"
-        />
-      </KeywordHighlighter>
+      <VuePDF
+        :pdf="diPietroPdf.pdf"
+        :page="page"
+        text-layer
+        :highlight-text="highlightText"
+        :highlightOptions="highlightOptions"
+        custom-highlight-class="custom-pdf-highlight"
+        customActiveHighlightClass="custom-active-highlight"
+        :activeHighlightText="activeHighlightText"
+        activeHighlightTextColor="white"
+        :width="1000"
+        @highlight-hover="handleHighlightHover"
+        @highlight-leave="handleHighlightLeave"
+        @highlight-click="handleHighlightClick"
+      />
+    </div>
+  </div>
+
+  <hr />
+
+  <div class="flex flex-col gap-4">
+    <div
+      class="border rounded-lg overflow-y-auto relative"
+      v-for="page in udayanPdf?.pages"
+      :key="page"
+    >
+      <VuePDF
+        :pdf="udayanPdf.pdf"
+        :page="page"
+        text-layer
+        :highlight-text="highlightText"
+        :highlightOptions="highlightOptions"
+        custom-highlight-class="custom-pdf-highlight"
+        customActiveHighlightClass="custom-active-highlight"
+        :activeHighlightText="activeHighlightText"
+        activeHighlightTextColor="white"
+        :width="1000"
+        @highlight-hover="handleHighlightHover"
+        @highlight-leave="handleHighlightLeave"
+        @highlight-click="handleHighlightClick"
+      />
+    </div>
+  </div>
+
+  <hr />
+
+  <div class="flex flex-col gap-4">
+    <div
+      class="border rounded-lg overflow-y-auto relative"
+      v-for="page in chaoPdf?.pages"
+      :key="page"
+    >
+      <VuePDF
+        :pdf="chaoPdf.pdf"
+        :page="page"
+        text-layer
+        :highlight-text="highlightText"
+        :highlightOptions="highlightOptions"
+        custom-highlight-class="custom-pdf-highlight"
+        customActiveHighlightClass="custom-active-highlight"
+        :activeHighlightText="activeHighlightText"
+        activeHighlightTextColor="white"
+        :width="1000"
+        @highlight-hover="handleHighlightHover"
+        @highlight-leave="handleHighlightLeave"
+        @highlight-click="handleHighlightClick"
+      />
     </div>
   </div>
 </template>
