@@ -392,7 +392,7 @@ function highlightMatches(
         // Calculate the center of the text
         const textCenter = x + rect.width / 2;
         // Calculate the new left position to center the highlight
-        const highlightLeft = textCenter - (rect.width + 4) / 2;
+        const highlightLeft = textCenter - (rect.width + 14) / 2;
 
         const isActive =
           match.keyword &&
@@ -401,10 +401,10 @@ function highlightMatches(
 
         const styleProps = {
           position: "absolute",
-          top: `${y + 1}px`,
+          top: `${y}px`,
           left: `${highlightLeft}px`,
-          width: `${rect.width + 4}px`,
-          height: `${rect.height - 2}px`,
+          width: `${rect.width + 14}px`,
+          height: `${rect.height}px`,
           pointerEvents: "all",
           zIndex: "1",
           whiteSpace: "nowrap",
@@ -475,12 +475,10 @@ function highlightMatches(
 
       const styleProps = {
         position: "absolute",
-        top: `${startDiv.offsetTop + 0.5}px`,
-        // Offset by 2px to the left
-        left: `${startDiv.offsetLeft + startMeasure.width - 2}px`,
-        // Add 4px to width for better highlight visibility
-        width: `${totalWidth + 4}px`,
-        height: `${endDiv.offsetHeight - 1}px`,
+        top: `${startDiv.offsetTop}px`,
+        left: `${startDiv.offsetLeft -7 + startMeasure.width}px`,
+        width: `${totalWidth + 14}px`,
+        height: `${endDiv.offsetHeight}px`,
         pointerEvents: "all",
         zIndex: "1",
         whiteSpace: "nowrap",
@@ -499,6 +497,11 @@ function highlightMatches(
         })
         .join("");
 
+      const isActive =
+        match.keyword &&
+        match.keyword.toLowerCase() === activeHighlightText?.toLowerCase() &&
+        customActiveHighlightClass;
+
       highlight = createHighlightElement(
         highlightId,
         styleProps,
@@ -506,6 +509,10 @@ function highlightMatches(
         match,
         renderOptions
       );
+
+      highlight.className = `pdf-highlight ${
+        isActive ? customActiveHighlightClass : customHighlightClass
+      }`;
 
       container.appendChild(highlight);
     }

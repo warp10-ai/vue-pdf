@@ -221,10 +221,6 @@ onMounted(() => {
     rgba(53, 184, 255, 0.3) 80%,
     rgba(53, 184, 255, 0) 100%
   );
-  padding-top: 2px;
-  padding-bottom: 2px;
-  padding-right: 5px;
-  padding-left: 5px;
   cursor: pointer;
 }
 
@@ -232,18 +228,12 @@ onMounted(() => {
   background: linear-gradient(
     90deg,
     rgba(92, 21, 224, 0) 0%,
-    rgba(92, 21, 224, 0.3) 30%,
-    rgba(92, 21, 224, 0.3) 60%,
+    rgba(92, 21, 224, 0.3) 20%,
+    rgba(92, 21, 224, 0.3) 80%,
     rgba(92, 21, 224, 0) 100%
   );
-  padding-top: 2px;
-  padding-bottom: 2px;
-  padding-right: 5px;
-  padding-left: 5px;
   cursor: pointer;
 }
 
-.vue-pdf {
-  position: relative;
-}
+
 </style>
