@@ -222,6 +222,7 @@ function createHighlightElement(
   }
 
   highlight.addEventListener("mouseenter", (event) => {
+    event.stopPropagation();
     eventHandlers?.onMouseEnter?.(
       event,
       content,
@@ -230,7 +231,8 @@ function createHighlightElement(
     );
   });
 
-  highlight.addEventListener("mouseleave", () => {
+  highlight.addEventListener("mouseleave", (event) => {
+    event.stopPropagation();
     eventHandlers?.onMouseLeave?.();
   });
 
@@ -259,7 +261,7 @@ function addTextOverlay(
     const textStyles: Record<string, string> = {
       position: "absolute",
       top: "0",
-      left: "4px",
+      left: "",
       color: textColor || computedStyle.color,
       fontSize: `${fontSize - 1}px`,
       fontFamily: computedStyle.fontFamily,
@@ -351,66 +353,92 @@ function highlightMatches(
     if (!container) return;
 
     const highlightId = `highlight-${idx}-${startOffset}-${endOffset}`;
-    let highlight = container.querySelector(`#${highlightId}`) as HTMLElement;
+    const existingHighlights = container.querySelectorAll(
+      `[id^="${highlightId}"]`
+    );
 
-    if (!highlight) {
-      const textStartRect = domHelpers.getMeasurements(
-        currentDiv,
-        startOffset >= 0 ? textItem.str.substring(0, startOffset) : ""
+    if (existingHighlights.length === 0) {
+      // Create a selection for the text
+      const selection = window.getSelection();
+      if (!selection) return;
+
+      // Create a range for the text
+      const range = document.createRange();
+      const textNode = currentDiv.firstChild;
+      if (!textNode) return;
+
+      // Set the range to the text we want to highlight
+      range.setStart(textNode, startOffset >= 0 ? startOffset : 0);
+      range.setEnd(
+        textNode,
+        endOffset >= 0 ? endOffset : textNode.textContent?.length || 0
       );
 
-      const textEndRect = domHelpers.getMeasurements(
-        currentDiv,
-        endOffset >= 0 ? textItem.str.substring(0, endOffset) : textItem.str
-      );
+      // Get the bounding rectangles of the selection
+      const rects = range.getClientRects();
+      if (rects.length === 0) return;
 
-      // Add 4 extra pixels to the width for better visibility
-      const width = textEndRect.width - textStartRect.width;
+      // Get the container's position
+      const containerRect = container.getBoundingClientRect();
 
-      const styleProps = {
-        position: "absolute",
-        top: `${currentDiv.offsetTop}px`,
-        left: `${currentDiv.offsetLeft - 3 + textStartRect.width}px`,
-        width: `${width + 6}px`,
-        height: `${currentDiv.offsetHeight}px`,
-        pointerEvents: "all",
-        zIndex: "1",
-        whiteSpace: "nowrap",
-      };
+      // Create highlight for each rectangle (in case text wraps)
+      for (let i = 0; i < rects.length; i++) {
+        const rect = rects[i];
 
-      highlight = createHighlightElement(
-        highlightId,
-        styleProps,
-        content,
-        match,
-        renderOptions
-      );
+        // Calculate position relative to container
+        const x = rect.left - containerRect.left;
+        const y = rect.top - containerRect.top;
 
-      container.appendChild(highlight);
-    }
+        // Calculate the center of the text
+        const textCenter = x + rect.width / 2;
+        // Calculate the new left position to center the highlight
+        const highlightLeft = textCenter - (rect.width + 4) / 2;
 
-    const isActive =
-      match.keyword &&
-      match.keyword.toLowerCase() === activeHighlightText?.toLowerCase() &&
-      customActiveHighlightClass;
+        const isActive =
+          match.keyword &&
+          match.keyword.toLowerCase() === activeHighlightText?.toLowerCase() &&
+          customActiveHighlightClass;
 
-    highlight.className = `pdf-highlight ${
-      isActive ? customActiveHighlightClass : customHighlightClass
-    }`;
+        const styleProps = {
+          position: "absolute",
+          top: `${y + 1}px`,
+          left: `${highlightLeft}px`,
+          width: `${rect.width + 4}px`,
+          height: `${rect.height - 2}px`,
+          pointerEvents: "all",
+          zIndex: "1",
+          whiteSpace: "nowrap",
+        };
 
-    if (isActive) {
-      if (activeHighlightTextColor) {
-        highlight.style.color = activeHighlightTextColor;
+        const highlightElement = createHighlightElement(
+          `${highlightId}-${i}`,
+          styleProps,
+          content,
+          match,
+          renderOptions
+        );
+
+        highlightElement.className = `pdf-highlight ${
+          isActive ? customActiveHighlightClass : customHighlightClass
+        }`;
+
+        container.appendChild(highlightElement);
       }
 
-      addTextOverlay(highlight, content, currentDiv, activeHighlightTextColor);
+      // Clear the selection
+      selection.removeAllRanges();
     } else {
-      const textContainer = highlight.querySelector(
-        ".highlight-text"
-      ) as HTMLElement;
-      if (textContainer) {
-        textContainer.style.display = "none";
-      }
+      // Update existing highlights
+      const isActive =
+        match.keyword &&
+        match.keyword.toLowerCase() === activeHighlightText?.toLowerCase() &&
+        customActiveHighlightClass;
+
+      existingHighlights.forEach((h) => {
+        h.className = `pdf-highlight ${
+          isActive ? customActiveHighlightClass : customHighlightClass
+        }`;
+      });
     }
   }
 
@@ -447,10 +475,12 @@ function highlightMatches(
 
       const styleProps = {
         position: "absolute",
-        top: `${startDiv.offsetTop}px`,
+        top: `${startDiv.offsetTop + 0.5}px`,
+        // Offset by 2px to the left
         left: `${startDiv.offsetLeft + startMeasure.width - 2}px`,
+        // Add 4px to width for better highlight visibility
         width: `${totalWidth + 4}px`,
-        height: `${endDiv.offsetHeight}px`,
+        height: `${endDiv.offsetHeight - 1}px`,
         pointerEvents: "all",
         zIndex: "1",
         whiteSpace: "nowrap",
@@ -458,8 +488,16 @@ function highlightMatches(
 
       const highlightText = textContent.items
         .slice(match.start.idx, match.end.idx + 1)
-        .map((item) => ("str" in item ? item.str : ""))
-        .join(" ");
+        .map((item, index) => {
+          if (!("str" in item)) return "";
+          let text = item.str;
+          if (index === 0) text = text.substring(match.start.offset);
+          if (index === match.end.idx - match.start.idx) {
+            text = text.substring(0, match.end.offset);
+          }
+          return text;
+        })
+        .join("");
 
       highlight = createHighlightElement(
         highlightId,

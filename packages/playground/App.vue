@@ -15,6 +15,7 @@ const udayanPdf = ref<any>(null);
 const chaoPdf = ref<any>(null);
 
 const highlightText = ref([
+  "diverse geographies" ,
   "durvalumab",
   "axitinib",
   "sunitinib",
@@ -106,7 +107,7 @@ const highlightText = ref([
   "platinum",
 ]);
 
-const activeHighlightText = ref("trametinib");
+const activeHighlightText = ref("axitinib");
 const highlightOptions = ref({
   completeWords: true,
   ignoreCase: true,
@@ -214,36 +215,34 @@ onMounted(() => {
 <style>
 .custom-pdf-highlight {
   background: linear-gradient(
-    0deg,
-    rgba(53, 184, 255, 0.2),
-    rgba(53, 184, 255, 0.2)
+    90deg,
+    rgba(53, 184, 255, 0) 0%,
+    rgba(53, 184, 255, 0.3) 20%,
+    rgba(53, 184, 255, 0.3) 80%,
+    rgba(53, 184, 255, 0) 100%
   );
-  position: absolute;
-  background-color: transparent;
+  padding-top: 2px;
+  padding-bottom: 2px;
+  padding-right: 5px;
+  padding-left: 5px;
   cursor: pointer;
-  padding: -1px;
-}
-
-.custom-pdf-highlight::before {
-  content: "";
-  position: absolute;
-  inset: -2px;
-  padding: 2px;
-  border-radius: 4px;
-  background: linear-gradient(147.05deg, #a095ff 0%, #e294ff 100%);
-  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  mask-composite: exclude;
 }
 
 .custom-active-highlight {
-  background-color: #5c15e0;
+  background: linear-gradient(
+    90deg,
+    rgba(92, 21, 224, 0) 0%,
+    rgba(92, 21, 224, 0.3) 30%,
+    rgba(92, 21, 224, 0.3) 60%,
+    rgba(92, 21, 224, 0) 100%
+  );
+  padding-top: 2px;
+  padding-bottom: 2px;
+  padding-right: 5px;
+  padding-left: 5px;
   cursor: pointer;
-  border-radius: 2px;
-  box-shadow: 0 0 0 2px #5c15e0;
-  position: absolute;
 }
 
-/* Container do PDF precisa ser relative */
 .vue-pdf {
   position: relative;
 }
