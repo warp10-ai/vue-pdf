@@ -82,25 +82,64 @@ function searchQuery(
   }
 
   // Join the text as is presented in textlayer and then replace newlines (/n) with whitespaces
-  let textJoined = strs.join("").replace(/\n/g, " ").replace(/®/g, "");
+  const textJoined = strs.join("").replace(/\n/g, " ");
 
-  // Remove special characters
-  textJoined = removeSpecialChars(textJoined, options.customSpecialChars);
-
-  const regexFlags = ["g"];
-  if (options.ignoreCase) regexFlags.push("i");
-
-  // Trim the query and escape all regex special characters
-  let fquery = removeSpecialChars(query.trim(), options.customSpecialChars).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  if (options.completeWords) fquery = `\\b${fquery}\\b`;
-
-  const regex = new RegExp(fquery, regexFlags.join(""));
-
+  // Split text into words for easier matching
+  const textWords = textJoined.split(/\s+/).filter(word => word.length > 0);
+  const queryWords = query.trim().split(/\s+/).filter(word => word.length > 0);
+  
+  // Normalize query words
+  const normalizedQueryWords = queryWords.map(word => 
+    removeSpecialChars(word, options.customSpecialChars)
+  );
+  
   const matches: Array<[number, number, string]> = [];
-  let match;
-
-  while ((match = regex.exec(textJoined)) !== null) {
-    matches.push([match.index, match[0].length, match[0]]);
+  
+  // Search for word sequences
+  for (let i = 0; i <= textWords.length - normalizedQueryWords.length; i++) {
+    let matchFound = true;
+    let matchStart = -1;
+    let matchEnd = -1;
+    
+    // Check if all query words match starting from position i
+    for (let j = 0; j < normalizedQueryWords.length; j++) {
+      const textWord = textWords[i + j];
+      const normalizedTextWord = removeSpecialChars(textWord, options.customSpecialChars);
+      const queryWord = normalizedQueryWords[j];
+      
+      const textWordToCompare = options.ignoreCase ? normalizedTextWord.toLowerCase() : normalizedTextWord;
+      const queryWordToCompare = options.ignoreCase ? queryWord.toLowerCase() : queryWord;
+      
+      if (textWordToCompare !== queryWordToCompare) {
+        matchFound = false;
+        break;
+      }
+      
+      // Track start and end positions
+      if (j === 0) {
+        // Find start position of first word
+        let pos = 0;
+        for (let k = 0; k < i; k++) {
+          pos += textWords[k].length + 1;
+        }
+        matchStart = pos;
+      }
+      
+      if (j === normalizedQueryWords.length - 1) {
+        // Find end position of last word
+        let pos = matchStart;
+        for (let k = 0; k < normalizedQueryWords.length; k++) {
+          pos += textWords[i + k].length + (k < normalizedQueryWords.length - 1 ? 1 : 0);
+        }
+        matchEnd = pos;
+      }
+    }
+    
+    if (matchFound) {
+      const matchLength = matchEnd - matchStart;
+      const matchText = textWords.slice(i, i + normalizedQueryWords.length).join(' ');
+      matches.push([matchStart, matchLength, matchText]);
+    }
   }
 
   return matches;
