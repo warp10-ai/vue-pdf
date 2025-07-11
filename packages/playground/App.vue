@@ -20,6 +20,13 @@ const reenaPdf = ref<any>(null);
 const highlightText = ref([
   "trodelvy (sacituzumab govitecan)",
   "tabrecta (capmatinib)",
+  "piqray (alpelisib)",
+  "spring",
+  "silver",
+  "preceptor",
+  "medical",
+  "prepared",
+  "advanced"
 ]);
 
 const activeHighlightText = ref("AVYCAZ");
@@ -77,8 +84,8 @@ onMounted(() => {
   background: linear-gradient(
     90deg,
     rgba(53, 184, 255, 0) 0%,
-    rgba(53, 184, 255, 0.3) 20%,
-    rgba(53, 184, 255, 0.3) 80%,
+    rgba(53, 184, 255, 0.8) 20%,
+    rgba(53, 184, 255, 0.8) 80%,
     rgba(53, 184, 255, 0) 100%
   );
   cursor: pointer;

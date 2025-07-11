@@ -84,7 +84,7 @@ function searchQuery(
   // Join the text as is presented in textlayer and then replace newlines (/n) with whitespaces
   const textJoined = strs.join("").replace(/\n/g, " ");
 
-  // Split text into words for easier matching
+  // Split text into words, but be smarter about parentheses and punctuation
   const textWords = textJoined.split(/\s+/).filter(word => word.length > 0);
   const queryWords = query.trim().split(/\s+/).filter(word => word.length > 0);
   
@@ -94,6 +94,9 @@ function searchQuery(
   );
   
   const matches: Array<[number, number, string]> = [];
+  
+  console.log('textWords', textWords);
+  console.log('normalizedQueryWords', normalizedQueryWords);
   
   // Search for word sequences
   for (let i = 0; i <= textWords.length - normalizedQueryWords.length; i++) {
@@ -110,7 +113,10 @@ function searchQuery(
       const textWordToCompare = options.ignoreCase ? normalizedTextWord.toLowerCase() : normalizedTextWord;
       const queryWordToCompare = options.ignoreCase ? queryWord.toLowerCase() : queryWord;
       
-      if (textWordToCompare !== queryWordToCompare) {
+      const textClean = textWordToCompare.replace(/[()]/g, '');
+      const queryClean = queryWordToCompare.replace(/[()]/g, '');
+      
+      if (textClean !== queryClean) {
         matchFound = false;
         break;
       }
@@ -129,7 +135,7 @@ function searchQuery(
         // Find end position of last word
         let pos = matchStart;
         for (let k = 0; k < normalizedQueryWords.length; k++) {
-          pos += textWords[i + k].length + (k < normalizedQueryWords.length - 1 ? 1 : 0);
+          pos += textWords[i + k].length + (k < normalizedQueryWords.length - 1 ? 1 : 0); 
         }
         matchEnd = pos;
       }
