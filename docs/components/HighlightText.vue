@@ -8,6 +8,7 @@ const highlightText = ref('javascript')
 const highlightOptions = ref({
   completeWords: false,
   ignoreCase: true,
+  ignoreSpecialChars: false,
 })
 </script>
 

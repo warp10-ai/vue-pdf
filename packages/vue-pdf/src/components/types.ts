@@ -77,6 +77,8 @@ export interface WatermarkOptions {
 export interface HighlightOptions {
   ignoreCase?: boolean;
   completeWords?: boolean;
+  ignoreSpecialChars?: boolean;
+  customSpecialChars?: string[];
 }
 
 export interface Base<T, S> {

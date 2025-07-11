@@ -52,6 +52,8 @@ function getHighlightOptionsWithDefaults(): HighlightOptions {
     {
       ignoreCase: true,
       completeWords: false,
+      ignoreSpecialChars: false,
+      customSpecialChars: [],
     },
     props.highlightOptions
   );

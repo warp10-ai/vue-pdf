@@ -1,6 +1,7 @@
 import type { TextItem } from "pdfjs-dist/types/src/display/api";
 import type { TextContent } from "pdfjs-dist/types/src/display/text_layer";
 import type { HighlightOptions, Match } from "../types";
+import { normalize } from "node:path";
 
 // Cache management
 // ----------------
@@ -41,8 +42,25 @@ const domHelpers: DOMHelpers = {
   },
 };
 
-// Text search functions
-// --------------------
+
+function removeSpecialChars(text: string, customChars?: string[]): string {
+  let result = text.normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[®©™℠]/g, '')
+    .replace(/[^\w\s]{5,}/g, '')
+    .trim();
+  
+  // Remove custom characters if provided
+  if (customChars && customChars.length > 0) {
+    const customRegex = new RegExp(`[${customChars.map(char => 
+      char.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    ).join('')}]`, 'g');
+    result = result.replace(customRegex, '');
+  }
+  
+  return result;
+}
+
 function searchQuery(
   textContent: TextContent,
   query: string,
@@ -64,13 +82,16 @@ function searchQuery(
   }
 
   // Join the text as is presented in textlayer and then replace newlines (/n) with whitespaces
-  const textJoined = strs.join("").replace(/\n/g, " ");
+  let textJoined = strs.join("").replace(/\n/g, " ").replace(/®/g, "");
+
+  // Remove special characters
+  textJoined = removeSpecialChars(textJoined, options.customSpecialChars);
 
   const regexFlags = ["g"];
   if (options.ignoreCase) regexFlags.push("i");
 
   // Trim the query and escape all regex special characters
-  let fquery = query.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  let fquery = removeSpecialChars(query.trim(), options.customSpecialChars).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   if (options.completeWords) fquery = `\\b${fquery}\\b`;
 
   const regex = new RegExp(fquery, regexFlags.join(""));
