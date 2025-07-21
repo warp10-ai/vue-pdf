@@ -18,20 +18,38 @@ const chaoPdf = ref<any>(null);
 const reenaPdf = ref<any>(null);
 
 const highlightText = ref([
-  "trodelvy (sacituzumab govitecan)",
-  "tabrecta (capmatinib)",
-  "piqray (alpelisib)",
-  "spring",
-  "silver",
-  "preceptor",
-  "medical",
-  "prepared",
-  "advanced"
+    "nextcure",//true
+    "tcr2 therapeutics", //true
+    "bristol-myers squibb", //true
+    "crizotinib",//true
+    "medimmune",//false
+    "astrazeneca",//false
+    "nc410",//true
+    "pembrolizumab",//true
+    "bristol myers squibb",//true
+    "bms-986299",//true
+    "nivolumab",//true
+    "ipilimumab",//true
+    "bms-986340",//true
+    "agenus",//true
+    "bms",//true
+    "osimertinib",//true
+    "az",//true
+    "m6620",//true
+    "topotecan",//true
+    "selumetinib",//true
+    "erlotinib",//true
+    "sunitinib",//true
+    "sepantronium bromide",//true
+    "ym155",//true
+    "paclitaxel",//true
+    "carboplatin",//true
+    "calcitonin"  //true
 ]);
 
 const activeHighlightText = ref("AVYCAZ");
 const highlightOptions = ref({
-  completeWords: false,
+  completeWords: true,
   ignoreCase: true,
   ignoreSpecialChars: true,
 });
@@ -49,7 +67,7 @@ const handleHighlightClick = (payload: any) => {
 };
 
 onMounted(() => {
-  reenaPdf.value = usePDF(reena);
+  udayanPdf.value = usePDF(udayan);
 });
 </script>
 
@@ -57,11 +75,11 @@ onMounted(() => {
   <div class="flex flex-col gap-4">
     <div
       class="border rounded-lg overflow-y-auto relative"
-      v-for="page in reenaPdf?.pages"
+      v-for="page in udayanPdf?.pages"
       :key="page"
     >
       <VuePDF
-        :pdf="reenaPdf.pdf"
+        :pdf="udayanPdf.pdf"
         :page="page"
         text-layer
         :highlight-text="highlightText"

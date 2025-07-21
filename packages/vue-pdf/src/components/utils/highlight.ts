@@ -48,6 +48,7 @@ function removeSpecialChars(text: string, customChars?: string[]): string {
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[®©™℠]/g, '')
     .replace(/[^\w\s]{5,}/g, '')
+    .replace(/[^\w\s]+$/g, '') // Remove trailing special characters
     .trim();
   
   // Remove custom characters if provided
@@ -135,7 +136,13 @@ function searchQuery(
         // Find end position of last word
         let pos = matchStart;
         for (let k = 0; k < normalizedQueryWords.length; k++) {
-          pos += textWords[i + k].length + (k < normalizedQueryWords.length - 1 ? 1 : 0); 
+          const originalWord = textWords[i + k];
+          const normalizedWord = removeSpecialChars(originalWord, options.customSpecialChars);
+          
+          // Calculate position based on the normalized word length
+          // but account for any trailing special characters that were removed
+          const wordLength = normalizedWord.length;
+          pos += wordLength + (k < normalizedQueryWords.length - 1 ? 1 : 0);
         }
         matchEnd = pos;
       }
