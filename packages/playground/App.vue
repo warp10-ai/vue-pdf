@@ -18,7 +18,7 @@ const chaoPdf = ref<any>(null);
 const reenaPdf = ref<any>(null);
 
 const highlightText = ref([
-    "nextcure",//true
+    'nextcure',//true
     "tcr2 therapeutics", //true
     "bristol-myers squibb", //true
     "crizotinib",//true

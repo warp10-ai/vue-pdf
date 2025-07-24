@@ -85,7 +85,11 @@ function searchQuery(
   // Join the text as is presented in textlayer and then replace newlines (/n) with whitespaces
   const textJoined = strs.join("").replace(/\n/g, " ");
 
-  // Split text into words, but be smarter about parentheses and punctuation
+  // Split text into words, treating slashes as word separators
+  // const textWords = textJoined
+  //   .split(/[\s/]+/)
+  //   .filter(word => word.length > 0);
+
   const textWords = textJoined.split(/\s+/).filter(word => word.length > 0);
   const queryWords = query.trim().split(/\s+/).filter(word => word.length > 0);
   
