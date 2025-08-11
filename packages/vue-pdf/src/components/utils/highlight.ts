@@ -85,11 +85,20 @@ function searchQuery(
   // Join the text as is presented in textlayer and then replace newlines (/n) with whitespaces
   const textJoined = strs.join("").replace(/\n/g, " ");
 
+  // Fix: Use proper Unicode characters for curly quotes - use Unicode escape sequences
+  const cleanedText = textJoined.replace(/[\u201C\u201D(),.'`]/g, ' ');
+
   // Split text into words, treating slashes as word separators
-  const textWords = textJoined
+  const textWords = cleanedText
     .split(/[\s/]+/)
     .filter(word => word.length > 0);
+    
+
   const queryWords = query.trim().split(/\s+/).filter(word => word.length > 0);
+  
+
+  
+
   
   // Create a mapping to reconstruct original positions
   const originalText = textJoined;
@@ -125,8 +134,11 @@ function searchQuery(
       const textWordToCompare = options.ignoreCase ? normalizedTextWord.toLowerCase() : normalizedTextWord;
       const queryWordToCompare = options.ignoreCase ? queryWord.toLowerCase() : queryWord;
       
-      const textClean = textWordToCompare.replace(/[()]/g, '');
-      const queryClean = queryWordToCompare.replace(/[()]/g, '');
+      // Fix: Use proper Unicode characters for curly quotes - use Unicode escape sequences
+      const textClean = textWordToCompare.replace(/[\u201C\u201D(),."'`]/g, '');
+      const queryClean = queryWordToCompare.replace(/[\u201C\u201D(),."'`]/g, '');
+      
+
       
       // Check for exact match or partial match within hyphenated words
       let isMatch = false;
@@ -134,9 +146,11 @@ function searchQuery(
       if (textClean === queryClean) {
         // Exact word match
         isMatch = true;
+
       } else if (!queryClean.includes('-') && textClean.includes('-') && textClean.includes(queryClean)) {
         // Partial match: query word is contained within a hyphenated word
         isMatch = true;
+
       }
       
       if (!isMatch) {
@@ -170,8 +184,9 @@ function searchQuery(
         const textWordToCompare = options.ignoreCase ? normalizedTextWord.toLowerCase() : normalizedTextWord;
         const queryWordToCompare = options.ignoreCase ? queryWord.toLowerCase() : queryWord;
         
-        const textClean = textWordToCompare.replace(/[()]/g, '');
-        const queryClean = queryWordToCompare.replace(/[()]/g, '');
+        // Fix: Use proper Unicode characters for curly quotes - use Unicode escape sequences
+        const textClean = textWordToCompare.replace(/[\u201C\u201D(),."'`]/g, '');
+        const queryClean = queryWordToCompare.replace(/[\u201D\u201C(),."'`]/g, '');
         
         if (textClean !== queryClean && !queryClean.includes('-') && textClean.includes('-') && textClean.includes(queryClean)) {
           // Partial match: create highlight for just the query part
@@ -315,12 +330,7 @@ function isKeywordActive(keyword: string, activeHighlightText?: string | string[
       keyword.toLowerCase() === text.toLowerCase()
     );
     
-    // Debug logs for array comparison
-    console.log("Array comparison:", {
-      keyword: keyword.toLowerCase(),
-      activeArray: activeHighlightText.map(t => t.toLowerCase()),
-      result
-    });
+
     
     return result;
   }

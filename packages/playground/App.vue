@@ -6,6 +6,7 @@ import udayan from "@samples/udayan.pdf";
 import chao from "@samples/chao.pdf";
 import reena from "@samples/reena.pdf";
 import joyson from "@samples/joyson.pdf";
+import ingmar from "@samples/ingmar.pdf";
 
 import { VuePDF, usePDF } from "@warp10-ai/vue-pdf";
 import { ref, onMounted } from "vue";
@@ -19,6 +20,8 @@ const chaoPdf = ref<any>(null);
 const reenaPdf = ref<any>(null);
 
 const joysonPdf = ref<any>(null);
+
+const ingmarPdf = ref<any>(null);
 
 // const highlightText = ref([
 //     'nextcure',//true
@@ -51,70 +54,9 @@ const joysonPdf = ref<any>(null);
 // ]);
 
 
-const highlightText = ref([
-  "astrazeneca",
-  "bristol myers squibb", 
-  "bms",
-  "abbvie",
-  "gilead sciences",
-  "gsk",
-  "glaxosmithkline",
-  "merck",
-  "novartis",
-  "pfizer",
-  "roche",
-  "sanofi",
-  
-  "arcus biosciences",
-  "innate pharma",
-  "tizona therapeutics",
-  "taiho pharmaceutical",
-  "hanmi pharmaceutical",
-  
-  "docetaxel",
-  "pembrolizumab",
-  "nivolumab",
-  "ipilimumab",
-  "osimertinib",
-  "durvalumab",
-  "tremelimumab",
-  "acalabrutinib",
-  "lenalidomide",
-  "pomalidomide",
-  "apremilast",
-  "gefitinib",
-  "letrozole",
-  "pemetrexed",
-  "carboplatin",
-  "paclitaxel",
-  "topotecan",
-  "selumetinib",
-  "erlotinib",
-  "sunitinib",
-  
-  "zimberelimab",
-  "etrumadenant",
-  "cediranib",
-  "efgivanermin alfa",
-  
-  "keytruda",
-  "opdivo",
-  "yervoy",
-  "tagrisso",
-  "imfinzi",
-  "imjudo",
-  "calquence",
-  "revlimid",
-  "pomalyst",
-  "otezla",
-  "iressa",
-  "femara",
-  "alimta",
-  "reclast",
-  "zometa"
-]);
+const highlightText = ref(["ifosfamide"]);
 
-const activeHighlightText = ref(["docetaxel", "astrazeneca", "bms"]);
+const activeHighlightText = ref(["ifosfamide", "astrazeneca", "bms"]);
 const highlightOptions = ref({
   completeWords: true,
   ignoreCase: true,
@@ -134,7 +76,7 @@ const handleHighlightClick = (payload: any) => {
 };
 
 onMounted(() => {
-  joysonPdf.value = usePDF(joyson);
+  ingmarPdf.value = usePDF(ingmar);
 });
 </script>
 
@@ -142,11 +84,11 @@ onMounted(() => {
   <div class="flex flex-col gap-4">
     <div
       class="border rounded-lg overflow-y-auto relative"
-      v-for="page in joysonPdf?.pages"
+      v-for="page in ingmarPdf?.pages"
       :key="page"
     >
       <VuePDF
-        :pdf="joysonPdf.pdf"
+        :pdf="ingmarPdf.pdf"
         :page="page"
         text-layer
         :highlight-text="highlightText"
