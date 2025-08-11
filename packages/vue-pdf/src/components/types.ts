@@ -54,6 +54,7 @@ export interface HighlightClickPayload {
   text: string;
   key: string | number;
   keyword: string;
+  isCurrentlyActive?: boolean;
   position: {
     x: number;
     y: number;

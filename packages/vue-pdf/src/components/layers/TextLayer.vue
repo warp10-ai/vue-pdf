@@ -19,7 +19,7 @@ const props = defineProps<{
     | string
     | string[]
     | Array<{ keyword: string; key: string | number }>;
-  activeHighlightText?: string;
+  activeHighlightText?: string | string[];
   highlightOptions?: HighlightOptions;
   highlightPages?: number[];
   customHighlightClass?: string;
@@ -141,7 +141,8 @@ function handleHighlightClick(
   event: MouseEvent,
   text: string,
   key: string | number,
-  keyword: string
+  keyword: string,
+  isCurrentlyActive?: boolean
 ) {
   const element = event.currentTarget as HTMLElement;
   const rect = element.getBoundingClientRect();
@@ -150,6 +151,7 @@ function handleHighlightClick(
     text,
     key,
     keyword,
+    isCurrentlyActive,
     position: {
       x: rect.left + rect.width / 2,
       y: rect.top,

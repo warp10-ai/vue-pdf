@@ -56,7 +56,7 @@ const props = withDefaults(
     watermarkText?: string;
     watermarkOptions?: WatermarkOptions;
     highlightText?: string | string[];
-    activeHighlightText?: string;
+    activeHighlightText?: string | string[];
     highlightOptions?: HighlightOptions;
     highlightPages?: number[];
     customHighlightClass?: string;

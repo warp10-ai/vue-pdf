@@ -5,6 +5,7 @@ import dipietro from "@samples/dipietro.pdf";
 import udayan from "@samples/udayan.pdf";
 import chao from "@samples/chao.pdf";
 import reena from "@samples/reena.pdf";
+import joyson from "@samples/joyson.pdf";
 
 import { VuePDF, usePDF } from "@warp10-ai/vue-pdf";
 import { ref, onMounted } from "vue";
@@ -17,37 +18,103 @@ const chaoPdf = ref<any>(null);
 
 const reenaPdf = ref<any>(null);
 
+const joysonPdf = ref<any>(null);
+
+// const highlightText = ref([
+//     'nextcure',//true
+//     "tcr2 therapeutics", //true
+//     "bristol-myers squibb", //true
+//     "crizotinib",//true
+//     "medimmune",//false
+//     "astrazeneca",//false
+//     "nc410",//true
+//     "pembrolizumab",//true
+//     "bristol myers squibb",//true
+//     "bms-986299",//true
+//     "nivolumab",//true
+//     "ipilimumab",//true
+//     "bms-986340",//true
+//     "agenus",//true
+//     "bms",//true
+//     "osimertinib",//true
+//     "az",//true
+//     "m6620",//true
+//     "topotecan",//true
+//     "selumetinib",//true
+//     "erlotinib",//true
+//     "sunitinib",//true
+//     "sepantronium bromide",//true
+//     "ym155",//true
+//     "paclitaxel",//true
+//     "carboplatin",//true
+//     "calcitonin"  //true
+// ]);
+
+
 const highlightText = ref([
-    'nextcure',//true
-    "tcr2 therapeutics", //true
-    "bristol-myers squibb", //true
-    "crizotinib",//true
-    "medimmune",//false
-    "astrazeneca",//false
-    "nc410",//true
-    "pembrolizumab",//true
-    "bristol myers squibb",//true
-    "bms-986299",//true
-    "nivolumab",//true
-    "ipilimumab",//true
-    "bms-986340",//true
-    "agenus",//true
-    "bms",//true
-    "osimertinib",//true
-    "az",//true
-    "m6620",//true
-    "topotecan",//true
-    "selumetinib",//true
-    "erlotinib",//true
-    "sunitinib",//true
-    "sepantronium bromide",//true
-    "ym155",//true
-    "paclitaxel",//true
-    "carboplatin",//true
-    "calcitonin"  //true
+  "astrazeneca",
+  "bristol myers squibb", 
+  "bms",
+  "abbvie",
+  "gilead sciences",
+  "gsk",
+  "glaxosmithkline",
+  "merck",
+  "novartis",
+  "pfizer",
+  "roche",
+  "sanofi",
+  
+  "arcus biosciences",
+  "innate pharma",
+  "tizona therapeutics",
+  "taiho pharmaceutical",
+  "hanmi pharmaceutical",
+  
+  "docetaxel",
+  "pembrolizumab",
+  "nivolumab",
+  "ipilimumab",
+  "osimertinib",
+  "durvalumab",
+  "tremelimumab",
+  "acalabrutinib",
+  "lenalidomide",
+  "pomalidomide",
+  "apremilast",
+  "gefitinib",
+  "letrozole",
+  "pemetrexed",
+  "carboplatin",
+  "paclitaxel",
+  "topotecan",
+  "selumetinib",
+  "erlotinib",
+  "sunitinib",
+  
+  "zimberelimab",
+  "etrumadenant",
+  "cediranib",
+  "efgivanermin alfa",
+  
+  "keytruda",
+  "opdivo",
+  "yervoy",
+  "tagrisso",
+  "imfinzi",
+  "imjudo",
+  "calquence",
+  "revlimid",
+  "pomalyst",
+  "otezla",
+  "iressa",
+  "femara",
+  "alimta",
+  "reclast",
+  "zometa"
 ]);
 
-const activeHighlightText = ref("AVYCAZ");
+const activeHighlightText = ref(["docetaxel", "astrazeneca", "bms"]);
 const highlightOptions = ref({
   completeWords: true,
   ignoreCase: true,
@@ -67,7 +134,7 @@ const handleHighlightClick = (payload: any) => {
 };
 
 onMounted(() => {
-  udayanPdf.value = usePDF(udayan);
+  joysonPdf.value = usePDF(joyson);
 });
 </script>
 
@@ -75,11 +142,11 @@ onMounted(() => {
   <div class="flex flex-col gap-4">
     <div
       class="border rounded-lg overflow-y-auto relative"
-      v-for="page in udayanPdf?.pages"
+      v-for="page in joysonPdf?.pages"
       :key="page"
     >
       <VuePDF
-        :pdf="udayanPdf.pdf"
+        :pdf="joysonPdf.pdf"
         :page="page"
         text-layer
         :highlight-text="highlightText"

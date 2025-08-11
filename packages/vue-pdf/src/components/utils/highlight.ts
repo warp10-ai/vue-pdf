@@ -86,12 +86,22 @@ function searchQuery(
   const textJoined = strs.join("").replace(/\n/g, " ");
 
   // Split text into words, treating slashes as word separators
-  // const textWords = textJoined
-  //   .split(/[\s/]+/)
-  //   .filter(word => word.length > 0);
-
-  const textWords = textJoined.split(/\s+/).filter(word => word.length > 0);
+  const textWords = textJoined
+    .split(/[\s/]+/)
+    .filter(word => word.length > 0);
   const queryWords = query.trim().split(/\s+/).filter(word => word.length > 0);
+  
+  // Create a mapping to reconstruct original positions
+  const originalText = textJoined;
+  const wordPositions: Array<{ word: string; start: number; end: number }> = [];
+  
+  let currentIndex = 0;
+  for (const word of textWords) {
+    const start = originalText.indexOf(word, currentIndex);
+    const end = start + word.length;
+    wordPositions.push({ word, start, end });
+    currentIndex = end;
+  }
   
   // Normalize query words
   const normalizedQueryWords = queryWords.map(word => 
@@ -99,9 +109,6 @@ function searchQuery(
   );
   
   const matches: Array<[number, number, string]> = [];
-  
-  console.log('textWords', textWords);
-  console.log('normalizedQueryWords', normalizedQueryWords);
   
   // Search for word sequences
   for (let i = 0; i <= textWords.length - normalizedQueryWords.length; i++) {
@@ -121,41 +128,71 @@ function searchQuery(
       const textClean = textWordToCompare.replace(/[()]/g, '');
       const queryClean = queryWordToCompare.replace(/[()]/g, '');
       
-      if (textClean !== queryClean) {
+      // Check for exact match or partial match within hyphenated words
+      let isMatch = false;
+      
+      if (textClean === queryClean) {
+        // Exact word match
+        isMatch = true;
+      } else if (!queryClean.includes('-') && textClean.includes('-') && textClean.includes(queryClean)) {
+        // Partial match: query word is contained within a hyphenated word
+        isMatch = true;
+      }
+      
+      if (!isMatch) {
         matchFound = false;
         break;
       }
       
-      // Track start and end positions
+      // Track start and end positions using the word positions mapping
       if (j === 0) {
         // Find start position of first word
-        let pos = 0;
-        for (let k = 0; k < i; k++) {
-          pos += textWords[k].length + 1;
-        }
-        matchStart = pos;
+        matchStart = wordPositions[i]?.start || 0;
       }
       
       if (j === normalizedQueryWords.length - 1) {
         // Find end position of last word
-        let pos = matchStart;
-        for (let k = 0; k < normalizedQueryWords.length; k++) {
-          const originalWord = textWords[i + k];
-          const normalizedWord = removeSpecialChars(originalWord, options.customSpecialChars);
-          
-          // Calculate position based on the normalized word length
-          // but account for any trailing special characters that were removed
-          const wordLength = normalizedWord.length;
-          pos += wordLength + (k < normalizedQueryWords.length - 1 ? 1 : 0);
-        }
-        matchEnd = pos;
+        const lastWordIndex = i + normalizedQueryWords.length - 1;
+        matchEnd = wordPositions[lastWordIndex]?.end || matchStart;
       }
     }
     
     if (matchFound) {
-      const matchLength = matchEnd - matchStart;
-      const matchText = textWords.slice(i, i + normalizedQueryWords.length).join(' ');
-      matches.push([matchStart, matchLength, matchText]);
+      // Check if we need to create partial matches for hyphenated words
+      let hasPartialMatch = false;
+      const partialMatches: Array<[number, number, string]> = [];
+      
+      for (let j = 0; j < normalizedQueryWords.length; j++) {
+        const textWord = textWords[i + j];
+        const normalizedTextWord = removeSpecialChars(textWord, options.customSpecialChars);
+        const queryWord = normalizedQueryWords[j];
+        
+        const textWordToCompare = options.ignoreCase ? normalizedTextWord.toLowerCase() : normalizedTextWord;
+        const queryWordToCompare = options.ignoreCase ? queryWord.toLowerCase() : queryWord;
+        
+        const textClean = textWordToCompare.replace(/[()]/g, '');
+        const queryClean = queryWordToCompare.replace(/[()]/g, '');
+        
+        if (textClean !== queryClean && !queryClean.includes('-') && textClean.includes('-') && textClean.includes(queryClean)) {
+          // Partial match: create highlight for just the query part
+          hasPartialMatch = true;
+          const queryStartInWord = textClean.indexOf(queryClean);
+          const partialStart = wordPositions[i + j]?.start || 0;
+          const partialMatchStart = partialStart + queryStartInWord;
+          const partialMatchEnd = partialMatchStart + queryClean.length;
+          partialMatches.push([partialMatchStart, queryClean.length, queryClean]);
+        }
+      }
+      
+      if (hasPartialMatch) {
+        // Add partial matches instead of the full word match
+        matches.push(...partialMatches);
+      } else {
+        // Normal full word match
+        const matchLength = matchEnd - matchStart;
+        const matchText = textWords.slice(i, i + normalizedQueryWords.length).join(' ');
+        matches.push([matchStart, matchLength, matchText]);
+      }
     }
   }
 
@@ -245,7 +282,8 @@ interface HighlightEventHandlers {
     event: MouseEvent,
     text: string,
     key: string | number,
-    keyword: string
+    keyword: string,
+    isCurrentlyActive?: boolean
   ) => void;
   onMouseEnter?: (
     event: MouseEvent,
@@ -260,8 +298,34 @@ interface HighlightRenderOptions {
   customHighlightClass?: string;
   activeHighlightTextColor?: string;
   customActiveHighlightClass?: string;
-  activeHighlightText?: string;
+  activeHighlightText?: string | string[];
   eventHandlers?: HighlightEventHandlers;
+}
+
+// Helper function to check if a keyword is active
+function isKeywordActive(keyword: string, activeHighlightText?: string | string[]): boolean {
+  if (!activeHighlightText) return false;
+  
+  if (typeof activeHighlightText === 'string') {
+    return keyword.toLowerCase() === activeHighlightText.toLowerCase();
+  }
+  
+  if (Array.isArray(activeHighlightText)) {
+    const result = activeHighlightText.some(text => 
+      keyword.toLowerCase() === text.toLowerCase()
+    );
+    
+    // Debug logs for array comparison
+    console.log("Array comparison:", {
+      keyword: keyword.toLowerCase(),
+      activeArray: activeHighlightText.map(t => t.toLowerCase()),
+      result
+    });
+    
+    return result;
+  }
+  
+  return false;
 }
 
 function createHighlightElement(
@@ -289,11 +353,17 @@ function createHighlightElement(
     highlight.style.cursor = "pointer";
     highlight.addEventListener("click", (event) => {
       event.stopPropagation();
+      
+      // Check if the clicked keyword is already in the active array
+      const isCurrentlyActive = isKeywordActive(match.keyword as string, options.activeHighlightText);
+      
+      // Pass whether the keyword is currently active to the click handler
       eventHandlers.onClick!(
         event,
         content,
         match.key as string | number,
-        match.keyword as string
+        match.keyword as string,
+        isCurrentlyActive
       );
     });
   }
@@ -377,12 +447,13 @@ function highlightMatches(
   customHighlightClass: string = "highlight",
   activeHighlightTextColor?: string,
   customActiveHighlightClass?: string,
-  activeHighlightText?: string,
+  activeHighlightText?: string | string[],
   onHighlightClick?: (
     event: MouseEvent,
     text: string,
     key: string | number,
-    keyword: string
+    keyword: string,
+    isCurrentlyActive?: boolean
   ) => void,
   onHighlightMouseEnter?: (
     event: MouseEvent,
@@ -473,7 +544,7 @@ function highlightMatches(
 
         const isActive =
           match.keyword &&
-          match.keyword.toLowerCase() === activeHighlightText?.toLowerCase() &&
+          isKeywordActive(match.keyword, activeHighlightText) &&
           customActiveHighlightClass;
 
         const styleProps = {
@@ -508,7 +579,7 @@ function highlightMatches(
       // Update existing highlights
       const isActive =
         match.keyword &&
-        match.keyword.toLowerCase() === activeHighlightText?.toLowerCase() &&
+        isKeywordActive(match.keyword, activeHighlightText) &&
         customActiveHighlightClass;
 
       existingHighlights.forEach((h) => {
@@ -576,7 +647,7 @@ function highlightMatches(
 
       const isActive =
         match.keyword &&
-        match.keyword.toLowerCase() === activeHighlightText?.toLowerCase() &&
+        isKeywordActive(match.keyword, activeHighlightText) &&
         customActiveHighlightClass;
 
       highlight = createHighlightElement(
@@ -596,7 +667,7 @@ function highlightMatches(
 
     const isActive =
       match.keyword &&
-      match.keyword.toLowerCase() === activeHighlightText?.toLowerCase() &&
+      isKeywordActive(match.keyword, activeHighlightText) &&
       customActiveHighlightClass;
 
     highlight.className = `pdf-highlight ${
