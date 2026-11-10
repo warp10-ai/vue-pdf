@@ -42,23 +42,26 @@ const domHelpers: DOMHelpers = {
   },
 };
 
-
 function removeSpecialChars(text: string, customChars?: string[]): string {
-  let result = text.normalize('NFKD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[®©™℠]/g, '')
-    .replace(/[^\w\s]{5,}/g, '')
-    .replace(/[^\w\s]+$/g, '') // Remove trailing special characters
+  let result = text
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[®©™℠]/g, "")
+    .replace(/[^\w\s]{5,}/g, "")
+    .replace(/[^\w\s]+$/g, "") // Remove trailing special characters
     .trim();
-  
+
   // Remove custom characters if provided
   if (customChars && customChars.length > 0) {
-    const customRegex = new RegExp(`[${customChars.map(char => 
-      char.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    ).join('')}]`, 'g');
-    result = result.replace(customRegex, '');
+    const customRegex = new RegExp(
+      `[${customChars
+        .map((char) => char.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+        .join("")}]`,
+      "g"
+    );
+    result = result.replace(customRegex, "");
   }
-  
+
   return result;
 }
 
@@ -86,24 +89,22 @@ function searchQuery(
   const textJoined = strs.join("").replace(/\n/g, " ");
 
   // Fix: Use proper Unicode characters for curly quotes - use Unicode escape sequences
-  const cleanedText = textJoined.replace(/[\u201C\u201D(),.'`]/g, ' ');
+  const cleanedText = textJoined.replace(/[\u201C\u201D(),.'`]/g, " ");
 
   // Split text into words, treating slashes as word separators
   const textWords = cleanedText
     .split(/[\s/]+/)
-    .filter(word => word.length > 0);
-    
+    .filter((word) => word.length > 0);
 
-  const queryWords = query.trim().split(/\s+/).filter(word => word.length > 0);
-  
+  const queryWords = query
+    .trim()
+    .split(/\s+/)
+    .filter((word) => word.length > 0);
 
-  
-
-  
   // Create a mapping to reconstruct original positions
   const originalText = textJoined;
   const wordPositions: Array<{ word: string; start: number; end: number }> = [];
-  
+
   let currentIndex = 0;
   for (const word of textWords) {
     const start = originalText.indexOf(word, currentIndex);
@@ -111,101 +112,135 @@ function searchQuery(
     wordPositions.push({ word, start, end });
     currentIndex = end;
   }
-  
+
   // Normalize query words
-  const normalizedQueryWords = queryWords.map(word => 
+  const normalizedQueryWords = queryWords.map((word) =>
     removeSpecialChars(word, options.customSpecialChars)
   );
-  
+
   const matches: Array<[number, number, string]> = [];
-  
+
   // Search for word sequences
   for (let i = 0; i <= textWords.length - normalizedQueryWords.length; i++) {
     let matchFound = true;
     let matchStart = -1;
     let matchEnd = -1;
-    
+
     // Check if all query words match starting from position i
     for (let j = 0; j < normalizedQueryWords.length; j++) {
       const textWord = textWords[i + j];
-      const normalizedTextWord = removeSpecialChars(textWord, options.customSpecialChars);
+      const normalizedTextWord = removeSpecialChars(
+        textWord,
+        options.customSpecialChars
+      );
       const queryWord = normalizedQueryWords[j];
-      
-      const textWordToCompare = options.ignoreCase ? normalizedTextWord.toLowerCase() : normalizedTextWord;
-      const queryWordToCompare = options.ignoreCase ? queryWord.toLowerCase() : queryWord;
-      
-      // Fix: Use proper Unicode characters for curly quotes - use Unicode escape sequences
-      const textClean = textWordToCompare.replace(/[\u201C\u201D(),."'`]/g, '');
-      const queryClean = queryWordToCompare.replace(/[\u201C\u201D(),."'`]/g, '');
-      
 
-      
+      const textWordToCompare = options.ignoreCase
+        ? normalizedTextWord.toLowerCase()
+        : normalizedTextWord;
+      const queryWordToCompare = options.ignoreCase
+        ? queryWord.toLowerCase()
+        : queryWord;
+
+      // Fix: Use proper Unicode characters for curly quotes - use Unicode escape sequences
+      const textClean = textWordToCompare.replace(/[\u201C\u201D(),."'`]/g, "");
+      const queryClean = queryWordToCompare.replace(
+        /[\u201C\u201D(),."'`]/g,
+        ""
+      );
+
       // Check for exact match or partial match within hyphenated words
       let isMatch = false;
-      
+
       if (textClean === queryClean) {
         // Exact word match
         isMatch = true;
-
-      } else if (!queryClean.includes('-') && textClean.includes('-') && textClean.includes(queryClean)) {
+      } else if (
+        !queryClean.includes("-") &&
+        textClean.includes("-") &&
+        textClean.includes(queryClean)
+      ) {
         // Partial match: query word is contained within a hyphenated word
         isMatch = true;
-
       }
-      
+
       if (!isMatch) {
         matchFound = false;
         break;
       }
-      
+
       // Track start and end positions using the word positions mapping
       if (j === 0) {
         // Find start position of first word
         matchStart = wordPositions[i]?.start || 0;
       }
-      
+
       if (j === normalizedQueryWords.length - 1) {
         // Find end position of last word
         const lastWordIndex = i + normalizedQueryWords.length - 1;
         matchEnd = wordPositions[lastWordIndex]?.end || matchStart;
       }
     }
-    
+
     if (matchFound) {
       // Check if we need to create partial matches for hyphenated words
       let hasPartialMatch = false;
       const partialMatches: Array<[number, number, string]> = [];
-      
+
       for (let j = 0; j < normalizedQueryWords.length; j++) {
         const textWord = textWords[i + j];
-        const normalizedTextWord = removeSpecialChars(textWord, options.customSpecialChars);
+        const normalizedTextWord = removeSpecialChars(
+          textWord,
+          options.customSpecialChars
+        );
         const queryWord = normalizedQueryWords[j];
-        
-        const textWordToCompare = options.ignoreCase ? normalizedTextWord.toLowerCase() : normalizedTextWord;
-        const queryWordToCompare = options.ignoreCase ? queryWord.toLowerCase() : queryWord;
-        
+
+        const textWordToCompare = options.ignoreCase
+          ? normalizedTextWord.toLowerCase()
+          : normalizedTextWord;
+        const queryWordToCompare = options.ignoreCase
+          ? queryWord.toLowerCase()
+          : queryWord;
+
         // Fix: Use proper Unicode characters for curly quotes - use Unicode escape sequences
-        const textClean = textWordToCompare.replace(/[\u201C\u201D(),."'`]/g, '');
-        const queryClean = queryWordToCompare.replace(/[\u201D\u201C(),."'`]/g, '');
-        
-        if (textClean !== queryClean && !queryClean.includes('-') && textClean.includes('-') && textClean.includes(queryClean)) {
+        const textClean = textWordToCompare.replace(
+          /[\u201C\u201D(),."'`]/g,
+          ""
+        );
+        const queryClean = queryWordToCompare.replace(
+          /[\u201D\u201C(),."'`]/g,
+          ""
+        );
+
+        if (
+          textClean !== queryClean &&
+          !queryClean.includes("-") &&
+          textClean.includes("-") &&
+          textClean.includes(queryClean)
+        ) {
           // Partial match: create highlight for just the query part
           hasPartialMatch = true;
           const queryStartInWord = textClean.indexOf(queryClean);
           const partialStart = wordPositions[i + j]?.start || 0;
           const partialMatchStart = partialStart + queryStartInWord;
           const partialMatchEnd = partialMatchStart + queryClean.length;
-          partialMatches.push([partialMatchStart, queryClean.length, queryClean]);
+          partialMatches.push([
+            partialMatchStart,
+            queryClean.length,
+            queryClean,
+          ]);
         }
       }
-      
+
       if (hasPartialMatch) {
         // Add partial matches instead of the full word match
         matches.push(...partialMatches);
       } else {
         // Normal full word match
         const matchLength = matchEnd - matchStart;
-        const matchText = textWords.slice(i, i + normalizedQueryWords.length).join(' ');
+        const matchText = textWords
+          .slice(i, i + normalizedQueryWords.length)
+          .join(" ");
         matches.push([matchStart, matchLength, matchText]);
       }
     }
@@ -318,23 +353,24 @@ interface HighlightRenderOptions {
 }
 
 // Helper function to check if a keyword is active
-function isKeywordActive(keyword: string, activeHighlightText?: string | string[]): boolean {
+function isKeywordActive(
+  keyword: string,
+  activeHighlightText?: string | string[]
+): boolean {
   if (!activeHighlightText) return false;
-  
-  if (typeof activeHighlightText === 'string') {
+
+  if (typeof activeHighlightText === "string") {
     return keyword.toLowerCase() === activeHighlightText.toLowerCase();
   }
-  
-  if (Array.isArray(activeHighlightText)) {
-    const result = activeHighlightText.some(text => 
-      keyword.toLowerCase() === text.toLowerCase()
-    );
-    
 
-    
+  if (Array.isArray(activeHighlightText)) {
+    const result = activeHighlightText.some(
+      (text) => keyword.toLowerCase() === text.toLowerCase()
+    );
+
     return result;
   }
-  
+
   return false;
 }
 
@@ -363,10 +399,13 @@ function createHighlightElement(
     highlight.style.cursor = "pointer";
     highlight.addEventListener("click", (event) => {
       event.stopPropagation();
-      
+
       // Check if the clicked keyword is already in the active array
-      const isCurrentlyActive = isKeywordActive(match.keyword as string, options.activeHighlightText);
-      
+      const isCurrentlyActive = isKeywordActive(
+        match.keyword as string,
+        options.activeHighlightText
+      );
+
       // Pass whether the keyword is currently active to the click handler
       eventHandlers.onClick!(
         event,
@@ -634,7 +673,7 @@ function highlightMatches(
       const styleProps = {
         position: "absolute",
         top: `${startDiv.offsetTop}px`,
-        left: `${startDiv.offsetLeft -7 + startMeasure.width}px`,
+        left: `${startDiv.offsetLeft - 7 + startMeasure.width}px`,
         width: `${totalWidth + 14}px`,
         height: `${endDiv.offsetHeight}px`,
         pointerEvents: "all",
