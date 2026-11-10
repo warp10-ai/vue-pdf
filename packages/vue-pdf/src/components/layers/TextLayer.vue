@@ -19,12 +19,9 @@ const props = defineProps<{
     | string
     | string[]
     | Array<{ keyword: string; key: string | number }>;
-  activeHighlightText?: string | string[];
   highlightOptions?: HighlightOptions;
   highlightPages?: number[];
   customHighlightClass?: string;
-  activeHighlightTextColor?: string;
-  customActiveHighlightClass?: string;
 }>();
 
 const emit = defineEmits<{
@@ -38,13 +35,6 @@ const emit = defineEmits<{
 const layer = ref<HTMLDivElement>();
 const endContent = ref<HTMLDivElement>();
 let textDivs: HTMLElement[] = [];
-
-watch(
-  () => props.activeHighlightText,
-  () => {
-    findAndHighlight(true);
-  }
-);
 
 function getHighlightOptionsWithDefaults(): HighlightOptions {
   return Object.assign(
@@ -94,9 +84,6 @@ async function findAndHighlight(reset = false) {
       textContent,
       textDivs,
       props.customHighlightClass || "highlight",
-      props.activeHighlightTextColor,
-      props.customActiveHighlightClass,
-      props.activeHighlightText,
       handleHighlightClick,
       handleHighlightMouseEnter,
       handleHighlightMouseLeave
@@ -141,8 +128,7 @@ function handleHighlightClick(
   event: MouseEvent,
   text: string,
   key: string | number,
-  keyword: string,
-  isCurrentlyActive?: boolean
+  keyword: string
 ) {
   const element = event.currentTarget as HTMLElement;
   const rect = element.getBoundingClientRect();
@@ -151,7 +137,6 @@ function handleHighlightClick(
     text,
     key,
     keyword,
-    isCurrentlyActive,
     position: {
       x: rect.left + rect.width / 2,
       y: rect.top,

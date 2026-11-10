@@ -1,7 +1,6 @@
 import type { TextItem } from "pdfjs-dist/types/src/display/api";
 import type { TextContent } from "pdfjs-dist/types/src/display/text_layer";
 import type { HighlightOptions, Match } from "../types";
-import { normalize } from "node:path";
 
 // Cache management
 // ----------------
@@ -223,7 +222,6 @@ function searchQuery(
           const queryStartInWord = textClean.indexOf(queryClean);
           const partialStart = wordPositions[i + j]?.start || 0;
           const partialMatchStart = partialStart + queryStartInWord;
-          const partialMatchEnd = partialMatchStart + queryClean.length;
           partialMatches.push([
             partialMatchStart,
             queryClean.length,
@@ -332,8 +330,7 @@ interface HighlightEventHandlers {
     event: MouseEvent,
     text: string,
     key: string | number,
-    keyword: string,
-    isCurrentlyActive?: boolean
+    keyword: string
   ) => void;
   onMouseEnter?: (
     event: MouseEvent,
@@ -346,32 +343,7 @@ interface HighlightEventHandlers {
 
 interface HighlightRenderOptions {
   customHighlightClass?: string;
-  activeHighlightTextColor?: string;
-  customActiveHighlightClass?: string;
-  activeHighlightText?: string | string[];
   eventHandlers?: HighlightEventHandlers;
-}
-
-// Helper function to check if a keyword is active
-function isKeywordActive(
-  keyword: string,
-  activeHighlightText?: string | string[]
-): boolean {
-  if (!activeHighlightText) return false;
-
-  if (typeof activeHighlightText === "string") {
-    return keyword.toLowerCase() === activeHighlightText.toLowerCase();
-  }
-
-  if (Array.isArray(activeHighlightText)) {
-    const result = activeHighlightText.some(
-      (text) => keyword.toLowerCase() === text.toLowerCase()
-    );
-
-    return result;
-  }
-
-  return false;
 }
 
 function createHighlightElement(
@@ -381,7 +353,7 @@ function createHighlightElement(
   match: Match,
   options: HighlightRenderOptions
 ): HTMLElement {
-  const highlight = document.createElement("div");
+  const highlight = document.createElement("mark");
   highlight.id = id;
   highlight.className = `pdf-highlight ${
     options.customHighlightClass || "highlight"
@@ -391,6 +363,7 @@ function createHighlightElement(
 
   highlight.dataset.text = content;
   highlight.dataset.key = String(match.key);
+  highlight.dataset.highlightId = String(match.key);
   highlight.dataset.keyword = match.keyword;
 
   const { eventHandlers } = options;
@@ -400,19 +373,11 @@ function createHighlightElement(
     highlight.addEventListener("click", (event) => {
       event.stopPropagation();
 
-      // Check if the clicked keyword is already in the active array
-      const isCurrentlyActive = isKeywordActive(
-        match.keyword as string,
-        options.activeHighlightText
-      );
-
-      // Pass whether the keyword is currently active to the click handler
       eventHandlers.onClick!(
         event,
         content,
         match.key as string | number,
-        match.keyword as string,
-        isCurrentlyActive
+        match.keyword as string
       );
     });
   }
@@ -435,74 +400,16 @@ function createHighlightElement(
   return highlight;
 }
 
-function addTextOverlay(
-  highlight: HTMLElement,
-  content: string,
-  referenceDiv: HTMLElement,
-  textColor?: string
-): void {
-  let textContainer = highlight.querySelector(
-    ".highlight-text"
-  ) as HTMLDivElement | null;
-
-  if (!textContainer) {
-    textContainer = document.createElement("div");
-    textContainer.className = "highlight-text";
-    textContainer.appendChild(document.createTextNode(content));
-
-    const computedStyle = domHelpers.getComputedStylesFor(referenceDiv);
-    const fontSize = parseFloat(computedStyle.fontSize);
-
-    // Copy all relevant text properties from the original element
-    const textStyles: Record<string, string> = {
-      position: "absolute",
-      top: "0",
-      left: "",
-      color: textColor || computedStyle.color,
-      fontSize: `${fontSize - 1}px`,
-      fontFamily: computedStyle.fontFamily,
-      fontWeight: computedStyle.fontWeight,
-      fontStyle: computedStyle.fontStyle,
-      letterSpacing: computedStyle.letterSpacing,
-      lineHeight: computedStyle.lineHeight,
-      textAlign: computedStyle.textAlign,
-      textTransform: computedStyle.textTransform,
-      fontVariant: computedStyle.fontVariant,
-      fontStretch: computedStyle.fontStretch,
-      wordSpacing: computedStyle.wordSpacing,
-      textDecoration: computedStyle.textDecoration,
-      textShadow: computedStyle.textShadow,
-      whiteSpace: computedStyle.whiteSpace,
-      wordBreak: computedStyle.wordBreak,
-      overflowWrap: computedStyle.overflowWrap,
-      direction: computedStyle.direction,
-      writingMode: computedStyle.writingMode,
-      textOrientation: computedStyle.textOrientation,
-      textRendering: computedStyle.textRendering,
-    };
-
-    Object.assign(textContainer.style, textStyles);
-
-    highlight.appendChild(textContainer);
-  } else {
-    textContainer.style.display = "block";
-  }
-}
-
 function highlightMatches(
   matches: Match[],
   textContent: TextContent,
   textDivs: HTMLElement[],
   customHighlightClass: string = "highlight",
-  activeHighlightTextColor?: string,
-  customActiveHighlightClass?: string,
-  activeHighlightText?: string | string[],
   onHighlightClick?: (
     event: MouseEvent,
     text: string,
     key: string | number,
-    keyword: string,
-    isCurrentlyActive?: boolean
+    keyword: string
   ) => void,
   onHighlightMouseEnter?: (
     event: MouseEvent,
@@ -514,9 +421,6 @@ function highlightMatches(
 ) {
   const renderOptions: HighlightRenderOptions = {
     customHighlightClass,
-    activeHighlightTextColor,
-    customActiveHighlightClass,
-    activeHighlightText,
     eventHandlers: {
       onClick: onHighlightClick,
       onMouseEnter: onHighlightMouseEnter,
@@ -591,11 +495,6 @@ function highlightMatches(
         // Calculate the new left position to center the highlight
         const highlightLeft = textCenter - (rect.width + 14) / 2;
 
-        const isActive =
-          match.keyword &&
-          isKeywordActive(match.keyword, activeHighlightText) &&
-          customActiveHighlightClass;
-
         const styleProps = {
           position: "absolute",
           top: `${y}px`,
@@ -615,27 +514,11 @@ function highlightMatches(
           renderOptions
         );
 
-        highlightElement.className = `pdf-highlight ${
-          isActive ? customActiveHighlightClass : customHighlightClass
-        }`;
-
         container.appendChild(highlightElement);
       }
 
       // Clear the selection
       selection.removeAllRanges();
-    } else {
-      // Update existing highlights
-      const isActive =
-        match.keyword &&
-        isKeywordActive(match.keyword, activeHighlightText) &&
-        customActiveHighlightClass;
-
-      existingHighlights.forEach((h) => {
-        h.className = `pdf-highlight ${
-          isActive ? customActiveHighlightClass : customHighlightClass
-        }`;
-      });
     }
   }
 
@@ -694,11 +577,6 @@ function highlightMatches(
         })
         .join("");
 
-      const isActive =
-        match.keyword &&
-        isKeywordActive(match.keyword, activeHighlightText) &&
-        customActiveHighlightClass;
-
       highlight = createHighlightElement(
         highlightId,
         styleProps,
@@ -707,53 +585,7 @@ function highlightMatches(
         renderOptions
       );
 
-      highlight.className = `pdf-highlight ${
-        isActive ? customActiveHighlightClass : customHighlightClass
-      }`;
-
       container.appendChild(highlight);
-    }
-
-    const isActive =
-      match.keyword &&
-      isKeywordActive(match.keyword, activeHighlightText) &&
-      customActiveHighlightClass;
-
-    highlight.className = `pdf-highlight ${
-      isActive ? customActiveHighlightClass : customHighlightClass
-    }`;
-
-    if (isActive) {
-      if (activeHighlightTextColor) {
-        highlight.style.color = activeHighlightTextColor;
-      }
-
-      const slicedContent = textContent.items
-        .slice(match.start.idx, match.end.idx + 1)
-        .map((item, index) => {
-          if (!("str" in item)) return "";
-          let text = item.str;
-          if (index === 0) text = text.substring(match.start.offset);
-          if (index === match.end.idx - match.start.idx) {
-            text = text.substring(0, match.end.offset);
-          }
-          return text;
-        })
-        .join("");
-
-      addTextOverlay(
-        highlight,
-        slicedContent,
-        textDivs[match.start.idx],
-        activeHighlightTextColor
-      );
-    } else {
-      const textContainer = highlight.querySelector(
-        ".highlight-text"
-      ) as HTMLElement;
-      if (textContainer) {
-        textContainer.style.display = "none";
-      }
     }
   }
 

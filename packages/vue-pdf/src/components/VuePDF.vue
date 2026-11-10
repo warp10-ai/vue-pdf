@@ -56,12 +56,9 @@ const props = withDefaults(
     watermarkText?: string;
     watermarkOptions?: WatermarkOptions;
     highlightText?: string | string[];
-    activeHighlightText?: string | string[];
     highlightOptions?: HighlightOptions;
     highlightPages?: number[];
     customHighlightClass?: string;
-    customActiveHighlightClass?: string;
-    activeHighlightTextColor?: string;
   }>(),
   {
     page: 1,
@@ -108,12 +105,9 @@ const alayerProps = computed(() => {
 const tlayerProps = computed(() => {
   return {
     highlightText: props.highlightText,
-    activeHighlightText: props.activeHighlightText,
     highlightOptions: props.highlightOptions,
     highlightPages: props.highlightPages,
     customHighlightClass: props.customHighlightClass,
-    activeHighlightTextColor: props.activeHighlightTextColor,
-    customActiveHighlightClass: props.customActiveHighlightClass,
   };
 });
 
