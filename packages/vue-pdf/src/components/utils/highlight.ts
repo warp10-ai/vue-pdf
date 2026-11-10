@@ -1,6 +1,7 @@
 import type { TextItem } from "pdfjs-dist/types/src/display/api";
 import type { TextContent } from "pdfjs-dist/types/src/display/text_layer";
 import type { HighlightMatcher, HighlightOptions, Match } from "../types";
+import { snapToGlyphs, type GlyphLayer } from "./glyphs";
 
 // Cache management
 // ----------------
@@ -417,7 +418,8 @@ function highlightMatches(
     key: string | number,
     keyword: string
   ) => void,
-  onHighlightMouseLeave?: () => void
+  onHighlightMouseLeave?: () => void,
+  glyphLayer?: GlyphLayer
 ) {
   const renderOptions: HighlightRenderOptions = {
     customHighlightClass,
@@ -487,19 +489,25 @@ function highlightMatches(
         const rect = rects[i];
 
         // Calculate position relative to container
-        const x = rect.left - containerRect.left;
         const y = rect.top - containerRect.top;
-
-        // Calculate the center of the text
-        const textCenter = x + rect.width / 2;
-        // Calculate the new left position to center the highlight
-        const highlightLeft = textCenter - (rect.width + 14) / 2;
+        let snapped: ReturnType<typeof snapToGlyphs> = null;
+        if (glyphLayer && rects.length === 1) {
+          snapped = snapToGlyphs(glyphLayer, container, content, {
+            left: rect.left - containerRect.left,
+            top: y,
+            width: rect.width,
+            height: rect.height,
+          });
+        }
+        if (snapped && !snapped.visible) continue;
+        const x = snapped?.left ?? rect.left - containerRect.left;
+        const textWidth = snapped?.width ?? rect.width;
 
         const styleProps = {
           position: "absolute",
           top: `${y}px`,
-          left: `${highlightLeft}px`,
-          width: `${rect.width + 14}px`,
+          left: `${x}px`,
+          width: `${textWidth}px`,
           height: `${rect.height}px`,
           pointerEvents: "all",
           zIndex: "1",
@@ -577,17 +585,6 @@ function highlightMatches(
         endMeasure.width -
         (startDiv.offsetLeft + startMeasure.width);
 
-      const styleProps = {
-        position: "absolute",
-        top: `${startDiv.offsetTop}px`,
-        left: `${startDiv.offsetLeft - 7 + startMeasure.width}px`,
-        width: `${totalWidth + 14}px`,
-        height: `${endDiv.offsetHeight}px`,
-        pointerEvents: "all",
-        zIndex: "1",
-        whiteSpace: "nowrap",
-      };
-
       const highlightText = textContent.items
         .slice(match.start.idx, match.end.idx + 1)
         .map((item, index) => {
@@ -600,6 +597,29 @@ function highlightMatches(
           return text;
         })
         .join("");
+
+      const estimatedLeft = startDiv.offsetLeft + startMeasure.width;
+      let snapped: ReturnType<typeof snapToGlyphs> = null;
+      if (glyphLayer) {
+        snapped = snapToGlyphs(glyphLayer, container, highlightText, {
+          left: estimatedLeft,
+          top: startDiv.offsetTop,
+          width: totalWidth,
+          height: endDiv.offsetHeight,
+        });
+      }
+      if (snapped && !snapped.visible) return;
+
+      const styleProps = {
+        position: "absolute",
+        top: `${startDiv.offsetTop}px`,
+        left: `${snapped?.left ?? estimatedLeft}px`,
+        width: `${snapped?.width ?? totalWidth}px`,
+        height: `${endDiv.offsetHeight}px`,
+        pointerEvents: "all",
+        zIndex: "1",
+        whiteSpace: "nowrap",
+      };
 
       highlight = createHighlightElement(
         highlightId,

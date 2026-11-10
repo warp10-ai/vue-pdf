@@ -12,6 +12,7 @@ import type {
   HighlightOptions,
   TextLayerLoadedEventPayload,
 } from "../types";
+import { getGlyphs, type GlyphLayer, type PageGlyph } from "../utils/glyphs";
 import {
   findMatches,
   highlightMatches,
@@ -74,6 +75,11 @@ function getHighlightText(page: PDFPageProxy) {
   return page.getTextContent();
 }
 
+function getGlyphLayer(glyphs: PageGlyph[]): GlyphLayer | undefined {
+  if (!layer.value || !props.viewport) return;
+  return { glyphs, layer: layer.value, viewport: props.viewport };
+}
+
 function getMatches(textContent: TextContent) {
   if (props.highlightMatcher) {
     return matchesFromMatcher(props.highlightMatcher, textContent);
@@ -85,10 +91,16 @@ function getMatches(textContent: TextContent) {
   );
 }
 
-async function findAndHighlight(reset = false) {
+async function findAndHighlight(
+  reset = false,
+  started?: {
+    textContent: Promise<TextContent>;
+    glyphs?: ReturnType<typeof getGlyphs>;
+  }
+) {
   const page = props.page;
   if (!page) return;
-  const textContent = await getHighlightText(page);
+  const textContent = await (started?.textContent ?? getHighlightText(page));
 
   if (!textContent) return;
 
@@ -100,6 +112,8 @@ async function findAndHighlight(reset = false) {
     (!props.highlightPages || props.highlightPages.includes(page.pageNumber))
   ) {
     const matches = getMatches(textContent);
+    let glyphs: PageGlyph[] = [];
+    if (matches.length) glyphs = await (started?.glyphs ?? getGlyphs(page));
 
     highlightMatches(
       matches,
@@ -108,7 +122,8 @@ async function findAndHighlight(reset = false) {
       props.customHighlightClass || "highlight",
       handleHighlightClick,
       handleHighlightMouseEnter,
-      handleHighlightMouseLeave
+      handleHighlightMouseLeave,
+      getGlyphLayer(glyphs)
     );
 
     emit("highlight", {
@@ -121,28 +136,36 @@ async function findAndHighlight(reset = false) {
 }
 
 function render() {
-  layer.value!.replaceChildren?.();
-
   const page = props.page;
   const viewport = props.viewport;
-  const textStream = page?.streamTextContent({
+  const container = layer.value;
+  if (!page || !viewport || !container) return;
+
+  container.replaceChildren?.();
+  let glyphs: ReturnType<typeof getGlyphs> | undefined;
+  if (props.highlightMatcher || props.highlightText) {
+    glyphs = getGlyphs(page);
+  }
+  const textContentSource = page.streamTextContent({
     includeMarkedContent: true,
     disableNormalization: true,
   });
   const textLayer = new PDFJS.TextLayer({
-    container: layer.value!,
-    textContentSource: textStream!,
-    viewport: viewport!,
+    container,
+    textContentSource,
+    viewport,
   });
-  textLayer.render().then(async () => {
+  textLayer.render().then(() => {
     textDivs = textLayer.textDivs;
-    const textContent = await page?.getTextContent();
-    emit("textLoaded", { textDivs, textContent });
     const endOfContent = document.createElement("div");
     endOfContent.className = "endOfContent";
     layer.value?.appendChild(endOfContent);
     endContent.value = endOfContent;
-    findAndHighlight();
+    const textForHighlights = getHighlightText(page);
+    findAndHighlight(false, { textContent: textForHighlights, glyphs });
+    (props.highlightMatcher ? page.getTextContent() : textForHighlights).then(
+      (textContent) => emit("textLoaded", { textDivs, textContent })
+    );
   });
 }
 
