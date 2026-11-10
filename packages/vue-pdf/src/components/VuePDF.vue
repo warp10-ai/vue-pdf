@@ -20,6 +20,7 @@ import type {
   AnnotationEventPayload,
   HighlightEventPayload,
   HighlightHoverPayload,
+  HighlightMatcher,
   HighlightOptions,
   LoadedEventPayload,
   TextLayerLoadedEventPayload,
@@ -57,6 +58,7 @@ const props = withDefaults(
     watermarkOptions?: WatermarkOptions;
     highlightText?: string | string[];
     highlightOptions?: HighlightOptions;
+    highlightMatcher?: HighlightMatcher;
     highlightPages?: number[];
     customHighlightClass?: string;
   }>(),
@@ -106,6 +108,7 @@ const tlayerProps = computed(() => {
   return {
     highlightText: props.highlightText,
     highlightOptions: props.highlightOptions,
+    highlightMatcher: props.highlightMatcher,
     highlightPages: props.highlightPages,
     customHighlightClass: props.customHighlightClass,
   };

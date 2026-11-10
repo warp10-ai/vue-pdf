@@ -3,14 +3,21 @@ import * as PDFJS from "pdfjs-dist";
 import { onMounted, ref, watch } from "vue";
 
 import type { PDFPageProxy, PageViewport } from "pdfjs-dist";
+import type { TextContent } from "pdfjs-dist/types/src/display/api";
 import type {
   HighlightClickPayload,
   HighlightEventPayload,
   HighlightHoverPayload,
+  HighlightMatcher,
   HighlightOptions,
   TextLayerLoadedEventPayload,
 } from "../types";
-import { findMatches, highlightMatches, resetDivs } from "../utils/highlight";
+import {
+  findMatches,
+  highlightMatches,
+  matchesFromMatcher,
+  resetDivs,
+} from "../utils/highlight";
 
 const props = defineProps<{
   page?: PDFPageProxy;
@@ -20,6 +27,7 @@ const props = defineProps<{
     | string[]
     | Array<{ keyword: string; key: string | number }>;
   highlightOptions?: HighlightOptions;
+  highlightMatcher?: HighlightMatcher;
   highlightPages?: number[];
   customHighlightClass?: string;
 }>();
@@ -49,7 +57,7 @@ function getHighlightOptionsWithDefaults(): HighlightOptions {
 }
 
 function normalizeHighlightText(
-  highlight:
+  highlight?:
     | string
     | string[]
     | Array<{ keyword: string; key: string | number }>
@@ -59,25 +67,39 @@ function normalizeHighlightText(
   return highlight;
 }
 
+function getHighlightText(page: PDFPageProxy) {
+  if (props.highlightMatcher) {
+    return page.getTextContent({ disableNormalization: true });
+  }
+  return page.getTextContent();
+}
+
+function getMatches(textContent: TextContent) {
+  if (props.highlightMatcher) {
+    return matchesFromMatcher(props.highlightMatcher, textContent);
+  }
+  return findMatches(
+    normalizeHighlightText(props.highlightText),
+    textContent,
+    getHighlightOptionsWithDefaults()
+  );
+}
+
 async function findAndHighlight(reset = false) {
   const page = props.page;
-  const textContent = await page?.getTextContent();
+  if (!page) return;
+  const textContent = await getHighlightText(page);
 
   if (!textContent) return;
 
   if (reset) resetDivs(textContent, textDivs);
 
   if (
-    props.highlightText &&
+    (props.highlightMatcher || props.highlightText) &&
     page &&
     (!props.highlightPages || props.highlightPages.includes(page.pageNumber))
   ) {
-    const normalizedHighlights = normalizeHighlightText(props.highlightText);
-    const matches = findMatches(
-      normalizedHighlights,
-      textContent,
-      getHighlightOptionsWithDefaults()
-    );
+    const matches = getMatches(textContent);
 
     highlightMatches(
       matches,
@@ -194,7 +216,7 @@ watch(
 );
 
 watch(
-  () => [props.highlightText, props.highlightOptions],
+  () => [props.highlightText, props.highlightOptions, props.highlightMatcher],
   (_) => {
     findAndHighlight(true);
   },

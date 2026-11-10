@@ -1,6 +1,6 @@
 import type { TextItem } from "pdfjs-dist/types/src/display/api";
 import type { TextContent } from "pdfjs-dist/types/src/display/text_layer";
-import type { HighlightOptions, Match } from "../types";
+import type { HighlightMatcher, HighlightOptions, Match } from "../types";
 
 // Cache management
 // ----------------
@@ -711,4 +711,56 @@ function findMatches(
   return convertedMatches;
 }
 
-export { findMatches, highlightMatches, resetDivs, domHelpers };
+function matchesFromMatcher(
+  matcher: HighlightMatcher,
+  textContent: TextContent
+): Match[] {
+  const items = textContent.items as TextItem[];
+  const positions: Array<{ idx: number; offset: number } | null> = [];
+  let text = "";
+
+  items.forEach((item, idx) => {
+    const str = item.str ?? "";
+    for (let offset = 0; offset < str.length; offset++) {
+      text += str[offset];
+      positions.push({ idx, offset });
+    }
+    if (item.hasEOL && !text.endsWith("-")) {
+      text += " ";
+      positions.push(null);
+    }
+  });
+
+  const hasLineBreak = (startIdx: number, endIdx: number) => {
+    return items.slice(startIdx, endIdx).some((item) => item.hasEOL);
+  };
+
+  const matches: Match[] = [];
+  for (const range of matcher(text)) {
+    const first = positions[range.start];
+    const last = positions[range.end - 1];
+    if (!first || !last || range.end <= range.start) continue;
+
+    const isMultiDiv = first.idx !== last.idx;
+    const crossesLine = isMultiDiv && hasLineBreak(first.idx, last.idx);
+    matches.push({
+      start: { idx: first.idx, offset: first.offset },
+      end: { idx: last.idx, offset: last.offset + 1 },
+      str: text.slice(range.start, range.end),
+      index: range.start,
+      key: range.key,
+      keyword: range.keyword,
+      isMultiDivByLineBreak: crossesLine,
+      isMultiDivSameLine: isMultiDiv && !crossesLine,
+    });
+  }
+  return matches;
+}
+
+export {
+  findMatches,
+  highlightMatches,
+  matchesFromMatcher,
+  resetDivs,
+  domHelpers,
+};

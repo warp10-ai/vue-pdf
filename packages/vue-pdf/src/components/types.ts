@@ -80,6 +80,15 @@ export interface WatermarkOptions {
   color?: string;
 }
 
+export interface HighlightRange {
+  start: number;
+  end: number;
+  keyword: string;
+  key: string | number;
+}
+
+export type HighlightMatcher = (text: string) => HighlightRange[];
+
 export interface HighlightOptions {
   ignoreCase?: boolean;
   completeWords?: boolean;
