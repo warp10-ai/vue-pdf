@@ -9,7 +9,7 @@ import joyson from "@samples/joyson.pdf";
 import ingmar from "@samples/ingmar.pdf";
 
 import { VuePDF, usePDF } from "@warp10-ai/vue-pdf";
-import { ref, onMounted } from "vue";
+import { ref, onMounted, watch } from "vue";
 
 const diPietroPdf = ref<any>(null);
 
@@ -53,7 +53,6 @@ const ingmarPdf = ref<any>(null);
 //     "calcitonin"  //true
 // ]);
 
-
 const highlightText = ref(["ifosfamide"]);
 
 const activeHighlightText = ref(["ifosfamide", "astrazeneca", "bms"]);
@@ -73,7 +72,27 @@ const handleHighlightLeave = () => {
 
 const handleHighlightClick = (payload: any) => {
   console.log(payload);
+  const active = activeHighlightText.value;
+  if (active.includes(payload.key)) {
+    activeHighlightText.value = active.filter((key) => key !== payload.key);
+    return;
+  }
+  activeHighlightText.value = [...active, payload.key];
 };
+
+const pagesRef = ref<HTMLElement>();
+
+const updateActiveHighlights = () => {
+  if (!pagesRef.value) return;
+  const highlights = pagesRef.value.querySelectorAll<HTMLElement>("[data-highlight-id]");
+  for (const highlight of highlights) {
+    const id = highlight.dataset.highlightId;
+    const isActive = id !== undefined && activeHighlightText.value.includes(id);
+    highlight.classList.toggle("custom-active-highlight", isActive);
+  }
+};
+
+watch(activeHighlightText, updateActiveHighlights);
 
 onMounted(() => {
   ingmarPdf.value = usePDF(ingmar);
@@ -81,7 +100,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="flex flex-col gap-4">
+  <div ref="pagesRef" class="flex flex-col gap-4">
     <div
       class="border rounded-lg overflow-y-auto relative"
       v-for="page in ingmarPdf?.pages"
@@ -94,13 +113,11 @@ onMounted(() => {
         :highlight-text="highlightText"
         :highlightOptions="highlightOptions"
         custom-highlight-class="custom-pdf-highlight"
-        customActiveHighlightClass="custom-active-highlight"
-        :activeHighlightText="activeHighlightText"
-        activeHighlightTextColor="white"
         :width="1000"
         @highlight-hover="handleHighlightHover"
         @highlight-leave="handleHighlightLeave"
         @highlight-click="handleHighlightClick"
+        @highlight="updateActiveHighlights"
       />
     </div>
   </div>
