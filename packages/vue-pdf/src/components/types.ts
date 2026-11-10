@@ -33,6 +33,12 @@ export interface HighlightHoverPayload {
     x: number;
     y: number;
   };
+  rect: {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  };
   pageNumber: number;
 }
 

@@ -177,6 +177,12 @@ function handleHighlightMouseEnter(
       x: rect.left + rect.width / 2,
       y: rect.top,
     },
+    rect: {
+      left: rect.left,
+      top: rect.top,
+      width: rect.width,
+      height: rect.height,
+    },
     pageNumber: props.page?.pageNumber || 1,
   });
 }
