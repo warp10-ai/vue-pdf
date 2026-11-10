@@ -522,6 +522,30 @@ function highlightMatches(
     }
   }
 
+  function highlightLine(
+    match: Match,
+    start: Match["start"],
+    end: Match["end"]
+  ) {
+    const itemLength = (idx: number) => {
+      const item = textContent.items[idx] as TextItem | undefined;
+      return item?.str.length ?? 0;
+    };
+    while (start.idx < end.idx && start.offset >= itemLength(start.idx)) {
+      start = { idx: start.idx + 1, offset: 0 };
+    }
+    while (end.idx > start.idx && end.offset === 0) {
+      end = { idx: end.idx - 1, offset: itemLength(end.idx - 1) };
+    }
+    if (start.idx === end.idx) {
+      if (end.offset > start.offset) {
+        appendHighlightDiv(match, start.idx, start.offset, end.offset);
+      }
+      return;
+    }
+    handleMultiDivHighlight({ ...match, start, end });
+  }
+
   function handleMultiDivHighlight(match: Match) {
     const startDiv = textDivs[match.start.idx];
     const endDiv = textDivs[match.end.idx];
@@ -599,32 +623,18 @@ function highlightMatches(
         match.end.offset
       );
     } else if (match.isMultiDivByLineBreak) {
-      // Has line breaks
-      if (match.isMultiDivSameLine) {
-        // Has multiple divs in at least one line
-        handleMultiDivHighlight(match);
-      } else {
-        // Single div per line
-        for (let idx = match.start.idx; idx <= match.end.idx; idx++) {
-          const textItem = textContent.items[idx] as TextItem;
-          if (!textItem) continue;
+      let lineStart = match.start;
+      for (let idx = match.start.idx; idx <= match.end.idx; idx++) {
+        const textItem = textContent.items[idx] as TextItem;
+        const isLastItem = idx === match.end.idx;
+        if (!isLastItem && !textItem?.hasEOL) continue;
 
-          if (idx === match.start.idx) {
-            // First line
-            appendHighlightDiv(
-              match,
-              idx,
-              match.start.offset,
-              textItem.str.length
-            );
-          } else if (idx === match.end.idx) {
-            // Last line
-            appendHighlightDiv(match, idx, 0, match.end.offset);
-          } else {
-            // Middle lines
-            appendHighlightDiv(match, idx, 0, textItem.str.length);
-          }
-        }
+        highlightLine(
+          match,
+          lineStart,
+          isLastItem ? match.end : { idx, offset: textItem.str.length }
+        );
+        lineStart = { idx: idx + 1, offset: 0 };
       }
     } else if (match.isMultiDivSameLine) {
       // Multiple divs in same line without line breaks
