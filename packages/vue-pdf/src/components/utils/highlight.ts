@@ -663,18 +663,6 @@ function highlightMatches(
   }
 }
 
-function resetDivs(textContent: TextContent, textDivs: HTMLElement[]) {
-  const textItems = textContent.items.map((val) => (val as TextItem).str);
-  for (let idx = 0; idx < textDivs.length; idx++) {
-    const div = textDivs[idx];
-
-    if (div && div.nodeType !== Node.TEXT_NODE) {
-      const textNode = document.createTextNode(textItems[idx]);
-      div.replaceChildren(textNode);
-    }
-  }
-}
-
 // Main API functions
 // -----------------
 function findMatches(
@@ -787,10 +775,4 @@ function matchesFromMatcher(
   return matches;
 }
 
-export {
-  findMatches,
-  highlightMatches,
-  matchesFromMatcher,
-  resetDivs,
-  domHelpers,
-};
+export { findMatches, highlightMatches, matchesFromMatcher, domHelpers };
