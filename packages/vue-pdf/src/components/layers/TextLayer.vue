@@ -18,7 +18,6 @@ const props = defineProps<{
   page?: PDFPageProxy;
   viewport?: PageViewport;
   highlightMatcher?: HighlightMatcher;
-  highlightPages?: number[];
   customHighlightClass?: string;
 }>();
 
@@ -46,10 +45,6 @@ const pageMatches = computed(() => {
   const source = highlightSource.value;
   const matcher = props.highlightMatcher;
   if (!source || !matcher) return null;
-  const { pageNumber } = source.page;
-  if (props.highlightPages && !props.highlightPages.includes(pageNumber)) {
-    return null;
-  }
   return matchesFromMatcher(matcher, source.textContent);
 });
 

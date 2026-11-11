@@ -56,7 +56,6 @@ const props = withDefaults(
     watermarkText?: string;
     watermarkOptions?: WatermarkOptions;
     highlightMatcher?: HighlightMatcher;
-    highlightPages?: number[];
     customHighlightClass?: string;
   }>(),
   {
@@ -104,7 +103,6 @@ const alayerProps = computed(() => {
 const tlayerProps = computed(() => {
   return {
     highlightMatcher: props.highlightMatcher,
-    highlightPages: props.highlightPages,
     customHighlightClass: props.customHighlightClass,
   };
 });
