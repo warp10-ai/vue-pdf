@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import * as PDFJS from "pdfjs-dist";
-import { ref, shallowRef, watch } from "vue";
+import { computed, ref, shallowRef, watch } from "vue";
 
 import type { PDFPageProxy, PageViewport } from "pdfjs-dist";
 import type { TextContent } from "pdfjs-dist/types/src/display/api";
@@ -42,23 +42,29 @@ const highlightSource = shallowRef<{
   glyphs: PageGlyph[];
 }>();
 
+const pageMatches = computed(() => {
+  const source = highlightSource.value;
+  const matcher = props.highlightMatcher;
+  if (!source || !matcher) return null;
+  const { pageNumber } = source.page;
+  if (props.highlightPages && !props.highlightPages.includes(pageNumber)) {
+    return null;
+  }
+  return matchesFromMatcher(matcher, source.textContent);
+});
+
 function drawHighlights() {
   const text = renderedText.value;
   const source = highlightSource.value;
+  const matches = pageMatches.value;
   const container = layer.value;
   if (!text || !container) return;
 
   container
     .querySelectorAll(".pdf-highlight")
     .forEach((highlight) => highlight.remove());
-  const matcher = props.highlightMatcher;
-  if (!matcher || source?.page !== text.page) return;
-  const page = source.page;
-  if (props.highlightPages && !props.highlightPages.includes(page.pageNumber)) {
-    return;
-  }
+  if (!matches || source?.page !== text.page) return;
 
-  const matches = matchesFromMatcher(matcher, source.textContent);
   highlightMatches(
     matches,
     source.textContent,
@@ -74,7 +80,7 @@ function drawHighlights() {
     matches,
     textContent: source.textContent,
     textDivs: text.textDivs,
-    page: page.pageNumber,
+    page: source.page.pageNumber,
   });
 }
 
@@ -200,13 +206,7 @@ watch(
 );
 
 watch(
-  [
-    renderedText,
-    highlightSource,
-    () => props.highlightMatcher,
-    () => props.highlightPages,
-    () => props.customHighlightClass,
-  ],
+  [renderedText, pageMatches, () => props.customHighlightClass],
   drawHighlights,
   { flush: "post" },
 );

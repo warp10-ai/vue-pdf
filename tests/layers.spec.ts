@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, test, vi } from "vitest";
 
 import { mount } from "@vue/test-utils";
+import { ref } from "vue";
 
 import { VuePDF, usePDF } from "@warp10-ai/vue-pdf/src";
 import type { HighlightEventPayload } from "@warp10-ai/vue-pdf/src/components/types.ts";
@@ -127,6 +128,32 @@ describe("Text Layer", () => {
       .map((highlight) => highlight.attributes("data-highlight-id"));
     expect(keys.sort()).toEqual(["a", "d"]);
     wrapper.unmount();
+  });
+
+  test("Highlight when a matcher's reactive input changes", async () => {
+    const query = ref("dynamic");
+    const matcher = (text: string) =>
+      [...text.matchAll(new RegExp(query.value, "gi"))].map((match) => ({
+        start: match.index!,
+        end: match.index! + match[0].length,
+        keyword: query.value,
+        key: query.value,
+      }));
+
+    const wrapper = mount(VuePDF, {
+      props: { pdf: pdf.value, textLayer: true, highlightMatcher: matcher },
+    });
+    await vi.waitUntil(() => wrapper.emitted("highlight"));
+
+    query.value = "trace";
+    await vi.waitUntil(() => wrapper.emitted("highlight")?.length === 2);
+    const { matches } = wrapper.emitted(
+      "highlight",
+    )![1][0] as HighlightEventPayload;
+    expect(matches.length).toBeGreaterThan(0);
+    expect(matches.every((match) => match.str.toLowerCase() === "trace")).toBe(
+      true,
+    );
   });
 });
 
