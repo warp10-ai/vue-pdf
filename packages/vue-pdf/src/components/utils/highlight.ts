@@ -302,6 +302,7 @@ function matchesFromMatcher(
   const matches: Match[] = [];
   for (const range of ranges) {
     if (range.start < covered) continue;
+    if (!(range.start >= 0 && range.end <= text.length)) continue;
     let { start, end } = range;
     // Line-break spaces have no character on the page to anchor a highlight to
     while (start < end && !positions[start]) start++;
