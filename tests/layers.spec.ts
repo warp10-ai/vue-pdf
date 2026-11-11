@@ -16,7 +16,7 @@ import xfaPDF from "@samples/xfa.pdf";
 
 describe("Text Layer", () => {
   const { pdf } = usePDF(
-    "https://raw.githubusercontent.com/mozilla/pdf.js/ba2edeae/web/compressed.tracemonkey-pldi-09.pdf"
+    "https://raw.githubusercontent.com/mozilla/pdf.js/ba2edeae/web/compressed.tracemonkey-pldi-09.pdf",
   );
 
   beforeAll(async () => {
@@ -195,10 +195,15 @@ describe("Marked content", () => {
   });
 
   test("Highlight a match spanning marked-content containers", async () => {
-    // On page 1, "MD" and ", PhD" sit in different marked-content containers
+    // On page 1, "MD" and ", PhD" sit in different marked-content containers,
+    // and "Alessandra" comes earlier in the same container as "MD"
     const matcher = (text: string) => {
+      const name = text.indexOf("Alessandra");
       const start = text.indexOf("MD, PhD");
-      return [{ start, end: start + 7, keyword: "MD, PhD", key: "degree" }];
+      return [
+        { start: name, end: name + 10, keyword: "Alessandra", key: "name" },
+        { start, end: start + 7, keyword: "MD, PhD", key: "degree" },
+      ];
     };
 
     const wrapper = mount(VuePDF, {
@@ -214,19 +219,24 @@ describe("Marked content", () => {
     expect(loaded.textContent?.items).toHaveLength(loaded.textDivs.length);
 
     const layer = wrapper.get("div.textLayer").element;
-    const highlight = wrapper.get(".pdf-highlight").element;
+    const highlight = wrapper.get('[data-highlight-id="degree"]').element;
     expect(highlight.parentElement).toBe(layer);
 
     const spans = [...layer.querySelectorAll("span:not(.markedContent)")];
     const first = spans.find((span) => span.textContent?.endsWith("MD"))!;
     const last = spans.find((span) => span.textContent === ", PhD")!;
-    const range = document.createRange();
-    range.setStart(first.firstChild!, first.textContent!.length - 2);
-    range.setEnd(last.firstChild!, last.textContent!.length);
-    const text = range.getBoundingClientRect();
+    const measure = (span: Element, start: number, end: number) => {
+      const range = document.createRange();
+      range.setStart(span.firstChild!, start);
+      range.setEnd(span.firstChild!, end);
+      return range.getBoundingClientRect();
+    };
+    const length = first.textContent!.length;
+    const textLeft = measure(first, length - 2, length).left;
+    const textRight = measure(last, 0, last.textContent!.length).right;
     const drawn = highlight.getBoundingClientRect();
-    expect(Math.abs(drawn.left - text.left)).toBeLessThan(3);
-    expect(Math.abs(drawn.right - text.right)).toBeLessThan(3);
+    expect(Math.abs(drawn.left - textLeft)).toBeLessThan(3);
+    expect(Math.abs(drawn.right - textRight)).toBeLessThan(3);
     wrapper.unmount();
   });
 });
@@ -355,7 +365,7 @@ describe("Annotation Layer", () => {
     expect(wrapper).toBeTruthy();
 
     await vi.waitUntil(
-      () => wrapper.get("div.annotationLayer").element.childNodes.length > 0
+      () => wrapper.get("div.annotationLayer").element.childNodes.length > 0,
     );
 
     const indexLink = wrapper.get('a[data-element-id="13R"]')

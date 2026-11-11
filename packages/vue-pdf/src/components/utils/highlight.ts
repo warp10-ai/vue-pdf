@@ -71,9 +71,6 @@ function highlightMatches(
       content = textItem.str.substring(0, endOffset);
     }
 
-    const container = currentDiv.parentElement;
-    if (!container) return;
-
     const highlightId = `highlight-${idx}-${startOffset}-${endOffset}`;
     // Create a range for the text
     const range = document.createRange();
@@ -91,19 +88,16 @@ function highlightMatches(
     const rects = range.getClientRects();
     if (rects.length === 0) return;
 
-    // Get the container's position
-    const containerRect = container.getBoundingClientRect();
-
     // Create highlight for each rectangle (in case text wraps)
     for (let i = 0; i < rects.length; i++) {
       const rect = rects[i];
 
-      // Calculate position relative to container
-      const y = (rect.top - containerRect.top) / scale;
-      const left = (rect.left - containerRect.left) / scale;
+      // Calculate position relative to the text layer
+      const y = (rect.top - layerRect.top) / scale;
+      const left = (rect.left - layerRect.left) / scale;
       let snapped: ReturnType<typeof snapToGlyphs> = null;
       if (placed && rects.length === 1) {
-        snapped = snapToGlyphs(placed, container, content, {
+        snapped = snapToGlyphs(placed, layer, content, {
           left,
           top: y,
           width: rect.width / scale,
@@ -134,18 +128,13 @@ function highlightMatches(
         customHighlightClass,
       );
 
-      container.appendChild(highlightElement);
+      layer.appendChild(highlightElement);
       drawn.push({
         element: highlightElement,
         text: content,
         key: match.key,
         keyword: match.keyword,
-        box: new DOMRect(
-          x + (containerRect.left - layerRect.left) / scale,
-          y + (containerRect.top - layerRect.top) / scale,
-          textWidth,
-          height,
-        ),
+        box: new DOMRect(x, y, textWidth, height),
       });
     }
   }
