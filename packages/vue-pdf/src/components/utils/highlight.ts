@@ -18,25 +18,11 @@ function measureText(div: HTMLElement, length: number): DOMRect {
   return range.getBoundingClientRect();
 }
 
-interface HighlightEventHandlers {
-  onClick?: (
-    event: MouseEvent,
-    text: string,
-    key: string | number,
-    keyword: string,
-  ) => void;
-  onMouseEnter?: (
-    event: MouseEvent,
-    text: string,
-    key: string | number,
-    keyword: string,
-  ) => void;
-  onMouseLeave?: () => void;
-}
-
-interface HighlightRenderOptions {
-  customHighlightClass?: string;
-  eventHandlers?: HighlightEventHandlers;
+export interface DrawnHighlight {
+  element: HTMLElement;
+  text: string;
+  key: string | number;
+  keyword: string;
 }
 
 function createHighlightElement(
@@ -44,13 +30,11 @@ function createHighlightElement(
   styleProps: Partial<CSSStyleDeclaration>,
   content: string,
   match: Match,
-  options: HighlightRenderOptions,
+  customHighlightClass: string,
 ): HTMLElement {
   const highlight = document.createElement("mark");
   highlight.id = id;
-  highlight.className = `pdf-highlight ${
-    options.customHighlightClass || "highlight"
-  }`;
+  highlight.className = `pdf-highlight ${customHighlightClass}`;
 
   Object.assign(highlight.style, styleProps);
 
@@ -58,38 +42,6 @@ function createHighlightElement(
   highlight.dataset.key = String(match.key);
   highlight.dataset.highlightId = String(match.key);
   highlight.dataset.keyword = match.keyword;
-
-  const { eventHandlers } = options;
-
-  if (eventHandlers?.onClick && match.key != null && match.keyword) {
-    highlight.style.cursor = "pointer";
-    highlight.addEventListener("click", (event) => {
-      event.stopPropagation();
-
-      eventHandlers.onClick!(
-        event,
-        content,
-        match.key as string | number,
-        match.keyword as string,
-      );
-    });
-  }
-
-  highlight.addEventListener("mouseenter", (event) => {
-    event.stopPropagation();
-    eventHandlers?.onMouseEnter?.(
-      event,
-      content,
-      match.key as string | number,
-      match.keyword as string,
-    );
-  });
-
-  highlight.addEventListener("mouseleave", (event) => {
-    event.stopPropagation();
-    eventHandlers?.onMouseLeave?.();
-  });
-
   return highlight;
 }
 
@@ -97,33 +49,13 @@ function highlightMatches(
   matches: Match[],
   textContent: TextContent,
   textDivs: HTMLElement[],
-  customHighlightClass: string = "highlight",
-  onHighlightClick?: (
-    event: MouseEvent,
-    text: string,
-    key: string | number,
-    keyword: string,
-  ) => void,
-  onHighlightMouseEnter?: (
-    event: MouseEvent,
-    text: string,
-    key: string | number,
-    keyword: string,
-  ) => void,
-  onHighlightMouseLeave?: () => void,
-  glyphLayer?: GlyphLayer,
-) {
-  const scale = glyphLayer ? screenScale(glyphLayer.layer) : 1;
-  const placed = glyphLayer ? placeGlyphs(glyphLayer) : null;
-
-  const renderOptions: HighlightRenderOptions = {
-    customHighlightClass,
-    eventHandlers: {
-      onClick: onHighlightClick,
-      onMouseEnter: onHighlightMouseEnter,
-      onMouseLeave: onHighlightMouseLeave,
-    },
-  };
+  customHighlightClass: string,
+  glyphLayer: GlyphLayer,
+): DrawnHighlight[] {
+  const drawn: DrawnHighlight[] = [];
+  const { layer } = glyphLayer;
+  const scale = screenScale(layer);
+  const placed = placeGlyphs(glyphLayer);
 
   function appendHighlightDiv(
     match: Match,
@@ -196,7 +128,7 @@ function highlightMatches(
         left: `${x}px`,
         width: `${textWidth}px`,
         height: `${rect.height / scale}px`,
-        pointerEvents: "all",
+        pointerEvents: "none",
         zIndex: "1",
         whiteSpace: "nowrap",
       };
@@ -206,10 +138,16 @@ function highlightMatches(
         styleProps,
         content,
         match,
-        renderOptions,
+        customHighlightClass,
       );
 
       container.appendChild(highlightElement);
+      drawn.push({
+        element: highlightElement,
+        text: content,
+        key: match.key,
+        keyword: match.keyword,
+      });
     }
   }
 
@@ -286,7 +224,7 @@ function highlightMatches(
       left: `${snapped?.left ?? estimatedLeft}px`,
       width: `${snapped?.width ?? totalWidth}px`,
       height: `${endDiv.offsetHeight}px`,
-      pointerEvents: "all",
+      pointerEvents: "none",
       zIndex: "1",
       whiteSpace: "nowrap",
     };
@@ -296,10 +234,16 @@ function highlightMatches(
       styleProps,
       highlightText,
       match,
-      renderOptions,
+      customHighlightClass,
     );
 
     container.appendChild(highlight);
+    drawn.push({
+      element: highlight,
+      text: highlightText,
+      key: match.key,
+      keyword: match.keyword,
+    });
   }
 
   for (const match of matches) {
@@ -330,6 +274,7 @@ function highlightMatches(
       handleMultiDivHighlight(match);
     }
   }
+  return drawn;
 }
 
 function matchesFromMatcher(

@@ -19,8 +19,8 @@ export interface Match {
   };
   str: string;
   index: number;
-  key?: string | number;
-  keyword?: string;
+  key: string | number;
+  keyword: string;
   isMultiDivByLineBreak: boolean;
   isMultiDivSameLine: boolean;
 }

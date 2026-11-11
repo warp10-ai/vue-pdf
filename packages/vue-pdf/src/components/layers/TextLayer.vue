@@ -12,7 +12,11 @@ import type {
   TextLayerLoadedEventPayload,
 } from "../types";
 import { getGlyphs, type PageGlyph } from "../utils/glyphs";
-import { highlightMatches, matchesFromMatcher } from "../utils/highlight";
+import {
+  highlightMatches,
+  matchesFromMatcher,
+  type DrawnHighlight,
+} from "../utils/highlight";
 
 const props = defineProps<{
   page?: PDFPageProxy;
@@ -49,6 +53,8 @@ const pageMatches = computed(() => {
   return matchesFromMatcher(matcher, source.textContent);
 });
 
+let highlights: DrawnHighlight[] = [];
+
 function drawHighlights() {
   const text = renderedText.value;
   const source = highlightSource.value;
@@ -56,19 +62,15 @@ function drawHighlights() {
   const container = layer.value;
   if (!text || !container) return;
 
-  container
-    .querySelectorAll(".pdf-highlight")
-    .forEach((highlight) => highlight.remove());
+  highlights.forEach(({ element }) => element.remove());
+  highlights = [];
   if (!matches || source?.page !== text.page) return;
 
-  highlightMatches(
+  highlights = highlightMatches(
     matches,
     source.textContent,
     text.textDivs,
     props.customHighlightClass || "highlight",
-    handleHighlightClick,
-    handleHighlightMouseEnter,
-    handleHighlightMouseLeave,
     { glyphs: source.glyphs, layer: container, viewport: text.viewport },
   );
 
@@ -80,56 +82,61 @@ function drawHighlights() {
   });
 }
 
-function handleHighlightClick(
-  event: MouseEvent,
-  text: string,
-  key: string | number,
-  keyword: string,
-) {
-  const element = event.currentTarget as HTMLElement;
-  const rect = element.getBoundingClientRect();
-
-  emit("highlightClick", {
-    text,
-    key,
-    keyword,
-    position: {
-      x: rect.left + rect.width / 2,
-      y: rect.top,
-    },
-    pageNumber: props.page?.pageNumber || 1,
+function highlightAt(event: MouseEvent) {
+  return highlights.find(({ element }) => {
+    const rect = element.getBoundingClientRect();
+    return (
+      event.clientX >= rect.left &&
+      event.clientX <= rect.right &&
+      event.clientY >= rect.top &&
+      event.clientY <= rect.bottom
+    );
   });
 }
 
-function handleHighlightMouseEnter(
-  event: MouseEvent,
-  text: string,
-  key: string | number,
-  keyword: string,
-) {
-  const element = event.currentTarget as HTMLElement;
+function describeHighlight({ element, text, key, keyword }: DrawnHighlight) {
   const rect = element.getBoundingClientRect();
+  return {
+    text,
+    key,
+    keyword,
+    position: { x: rect.left + rect.width / 2, y: rect.top },
+    pageNumber: props.page?.pageNumber || 1,
+  };
+}
 
+let hovered: DrawnHighlight | undefined;
+
+function setHovered(highlight: DrawnHighlight | undefined) {
+  hovered?.element.removeAttribute("data-hovered");
+  highlight?.element.setAttribute("data-hovered", "");
+  hovered = highlight;
+}
+
+function onMouseMove(event: MouseEvent) {
+  const highlight = highlightAt(event);
+  if (highlight === hovered) return;
+  if (hovered) emit("highlightLeave");
+  setHovered(highlight);
+  if (!highlight) return;
+  const { element } = highlight;
+  const { left, top, width, height } = element.getBoundingClientRect();
   emit("highlightHover", {
-    text,
-    key,
-    keyword,
-    position: {
-      x: rect.left + rect.width / 2,
-      y: rect.top,
-    },
-    rect: {
-      left: rect.left,
-      top: rect.top,
-      width: rect.width,
-      height: rect.height,
-    },
-    pageNumber: props.page?.pageNumber || 1,
+    ...describeHighlight(highlight),
+    rect: { left, top, width, height },
   });
 }
 
-function handleHighlightMouseLeave() {
+function onMouseLeave() {
+  if (!hovered) return;
+  setHovered(undefined);
   emit("highlightLeave");
+}
+
+function onClick(event: MouseEvent) {
+  if (!document.getSelection()?.isCollapsed) return;
+  const highlight = highlightAt(event);
+  if (highlight) emit("highlightClick", describeHighlight(highlight));
 }
 
 function onMouseDown() {
@@ -226,5 +233,8 @@ watch(
     class="textLayer"
     style="display: block"
     @mousedown="onMouseDown"
+    @mousemove="onMouseMove"
+    @mouseleave="onMouseLeave"
+    @click="onClick"
   />
 </template>
