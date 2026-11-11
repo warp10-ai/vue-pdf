@@ -142,8 +142,14 @@ Highlights let the pointer through so text selection can start on them, which me
 />
 ```
 
+Highlights are `<mark>` elements, so a custom class needs its own background; otherwise the browser's opaque yellow covers the text.
+
 ```css
 /* Translucent, because highlights sit on top of the text */
+.my-highlight {
+  background: rgb(255 235 59 / 0.4);
+}
+
 .my-highlight[data-hovered] {
   background: rgb(255 165 0 / 0.4);
 }
