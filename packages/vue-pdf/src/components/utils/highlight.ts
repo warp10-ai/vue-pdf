@@ -370,17 +370,21 @@ function matchesFromMatcher(
 
   const matches: Match[] = [];
   for (const range of matcher(text)) {
-    const first = positions[range.start];
-    const last = positions[range.end - 1];
-    if (!first || !last || range.end <= range.start) continue;
+    let { start, end } = range;
+    // Line-break spaces have no character on the page to anchor a highlight to
+    while (start < end && !positions[start]) start++;
+    while (end > start && !positions[end - 1]) end--;
+    const first = positions[start];
+    const last = positions[end - 1];
+    if (!first || !last || end <= start) continue;
 
     const isMultiDiv = first.idx !== last.idx;
     const crossesLine = isMultiDiv && hasLineBreak(first.idx, last.idx);
     matches.push({
       start: { idx: first.idx, offset: first.offset },
       end: { idx: last.idx, offset: last.offset + 1 },
-      str: text.slice(range.start, range.end),
-      index: range.start,
+      str: text.slice(start, end),
+      index: start,
       key: range.key,
       keyword: range.keyword,
       isMultiDivByLineBreak: crossesLine,

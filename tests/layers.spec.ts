@@ -75,6 +75,32 @@ describe("Text Layer", () => {
     await vi.waitUntil(() => wrapper.emitted("highlight")?.length === 3);
     expect(wrapper.findAll(".pdf-highlight")).toHaveLength(0);
   });
+
+  test("Highlight edges at line breaks", async () => {
+    let returned = 0;
+    // Each range starts or ends on whitespace, including the spaces added at line breaks
+    const matcher = (text: string) => {
+      const ranges = [...text.matchAll(/\s\w+|\w+\s/g)].map((match) => ({
+        start: match.index!,
+        end: match.index! + match[0].length,
+        keyword: match[0],
+        key: match.index!,
+      }));
+      returned = ranges.length;
+      return ranges;
+    };
+
+    const wrapper = mount(VuePDF, {
+      props: { pdf: pdf.value, textLayer: true, highlightMatcher: matcher },
+    });
+    await vi.waitUntil(() => wrapper.emitted("highlight"));
+
+    const { matches } = wrapper.emitted(
+      "highlight",
+    )![0][0] as HighlightEventPayload;
+    expect(matches).toHaveLength(returned);
+    expect(matches.every((match) => match.str.trim())).toBe(true);
+  });
 });
 
 describe("Annotation Layer", () => {
