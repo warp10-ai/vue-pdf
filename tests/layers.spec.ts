@@ -103,13 +103,15 @@ describe("Text Layer", () => {
   });
 
   test("Highlight overlapping results", async () => {
-    // The same range under two keys, and a range that shares its start with a longer one
+    // The same range under two keys, a shorter range inside it, and a separate range after it
     const matcher = (text: string) => {
       const start = text.search(/\w{12}/);
+      const next = start + 12 + text.slice(start + 12).search(/\w{5}/);
       return [
+        { start, end: start + 1, keyword: "short", key: "c" },
         { start, end: start + 12, keyword: "long", key: "a" },
         { start, end: start + 12, keyword: "long", key: "b" },
-        { start, end: start + 1, keyword: "short", key: "c" },
+        { start: next, end: next + 5, keyword: "next", key: "d" },
       ];
     };
 
@@ -123,7 +125,7 @@ describe("Text Layer", () => {
     const keys = wrapper
       .findAll(".pdf-highlight")
       .map((highlight) => highlight.attributes("data-highlight-id"));
-    expect(keys.sort()).toEqual(["a", "b", "c"]);
+    expect(keys.sort()).toEqual(["a", "d"]);
     wrapper.unmount();
   });
 });

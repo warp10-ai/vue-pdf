@@ -356,8 +356,13 @@ function matchesFromMatcher(
     return items.slice(startIdx, endIdx).some((item) => item.hasEOL);
   };
 
+  const ranges = [...matcher(text)];
+  ranges.sort((a, b) => a.start - b.start || b.end - a.end);
+  let covered = 0;
+
   const matches: Match[] = [];
-  for (const range of matcher(text)) {
+  for (const range of ranges) {
+    if (range.start < covered) continue;
     let { start, end } = range;
     // Line-break spaces have no character on the page to anchor a highlight to
     while (start < end && !positions[start]) start++;
@@ -365,6 +370,7 @@ function matchesFromMatcher(
     const first = positions[start];
     const last = positions[end - 1];
     if (!first || !last || end <= start) continue;
+    covered = range.end;
 
     const isMultiDiv = first.idx !== last.idx;
     const crossesLine = isMultiDiv && hasLineBreak(first.idx, last.idx);
