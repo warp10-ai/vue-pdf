@@ -17,22 +17,16 @@ export interface DrawnHighlight {
 }
 
 function createHighlightElement(
-  id: string,
   styleProps: Partial<CSSStyleDeclaration>,
-  content: string,
   match: Match,
   customHighlightClass: string,
 ): HTMLElement {
   const highlight = document.createElement("mark");
-  highlight.id = id;
   highlight.className = `pdf-highlight ${customHighlightClass}`;
 
   Object.assign(highlight.style, styleProps);
 
-  highlight.dataset.text = content;
-  highlight.dataset.key = String(match.key);
   highlight.dataset.highlightId = String(match.key);
-  highlight.dataset.keyword = match.keyword;
   return highlight;
 }
 
@@ -52,37 +46,22 @@ function highlightMatches(
   function appendHighlightDiv(
     match: Match,
     idx: number,
-    startOffset = -1,
-    endOffset = -1,
+    startOffset: number,
+    endOffset: number,
   ) {
     const textItem = textContent.items[idx] as TextItem;
     const currentDiv = textDivs[idx];
     if (!currentDiv) return;
 
-    // Determine content for data-text attribute
-    let content = "";
-    if (startOffset >= 0 && endOffset >= 0) {
-      content = textItem.str.substring(startOffset, endOffset);
-    } else if (startOffset < 0 && endOffset < 0) {
-      content = textItem.str;
-    } else if (startOffset >= 0) {
-      content = textItem.str.substring(startOffset);
-    } else if (endOffset >= 0) {
-      content = textItem.str.substring(0, endOffset);
-    }
-
-    const highlightId = `highlight-${idx}-${startOffset}-${endOffset}`;
+    const content = textItem.str.substring(startOffset, endOffset);
     // Create a range for the text
     const range = document.createRange();
     const textNode = currentDiv.firstChild;
     if (!textNode) return;
 
     // Set the range to the text we want to highlight
-    range.setStart(textNode, startOffset >= 0 ? startOffset : 0);
-    range.setEnd(
-      textNode,
-      endOffset >= 0 ? endOffset : textNode.textContent?.length || 0,
-    );
+    range.setStart(textNode, startOffset);
+    range.setEnd(textNode, endOffset);
 
     // Get the bounding rectangles of the range
     const rects = range.getClientRects();
@@ -97,7 +76,7 @@ function highlightMatches(
       const left = (rect.left - layerRect.left) / scale;
       let snapped: ReturnType<typeof snapToGlyphs> = null;
       if (placed && rects.length === 1) {
-        snapped = snapToGlyphs(placed, layer, content, {
+        snapped = snapToGlyphs(placed, content, {
           left,
           top: y,
           width: rect.width / scale,
@@ -117,13 +96,10 @@ function highlightMatches(
         height: `${height}px`,
         pointerEvents: "none",
         zIndex: "1",
-        whiteSpace: "nowrap",
       };
 
       const highlightElement = createHighlightElement(
-        `${highlightId}-${i}`,
         styleProps,
-        content,
         match,
         customHighlightClass,
       );
@@ -166,12 +142,8 @@ function highlightMatches(
   function handleMultiDivHighlight(match: Match) {
     const startDiv = textDivs[match.start.idx];
     const endDiv = textDivs[match.end.idx];
-    const startItem = textContent.items[match.start.idx] as TextItem;
-    const endItem = textContent.items[match.end.idx] as TextItem;
+    if (!startDiv || !endDiv) return;
 
-    if (!startDiv || !endDiv || !startItem || !endItem) return;
-
-    const highlightId = `highlight-${match.start.idx}-${match.start.offset}-${match.end.idx}-${match.end.offset}`;
     const startText = startDiv.firstChild;
     const endText = endDiv.firstChild;
     if (!startText || !endText) return;
@@ -199,7 +171,7 @@ function highlightMatches(
 
     let snapped: ReturnType<typeof snapToGlyphs> = null;
     if (placed) {
-      snapped = snapToGlyphs(placed, layer, highlightText, {
+      snapped = snapToGlyphs(placed, highlightText, {
         left,
         top,
         width: right - left,
@@ -219,13 +191,10 @@ function highlightMatches(
       height: `${box.height}px`,
       pointerEvents: "none",
       zIndex: "1",
-      whiteSpace: "nowrap",
     };
 
     const highlight = createHighlightElement(
-      highlightId,
       styleProps,
-      highlightText,
       match,
       customHighlightClass,
     );

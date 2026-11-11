@@ -58,7 +58,7 @@ export function screenScale(element: HTMLElement): number {
   return element.getBoundingClientRect().width / element.offsetWidth;
 }
 
-interface PlacedGlyph {
+export interface PlacedGlyph {
   text: string;
   left: number;
   right: number;
@@ -66,13 +66,7 @@ interface PlacedGlyph {
   visible: boolean;
 }
 
-export interface PlacedGlyphs {
-  glyphs: PlacedGlyph[];
-  layer: HTMLElement;
-  scale: number;
-}
-
-export function placeGlyphs(glyphLayer: GlyphLayer): PlacedGlyphs | null {
+export function placeGlyphs(glyphLayer: GlyphLayer): PlacedGlyph[] | null {
   const { glyphs, layer, viewport } = glyphLayer;
   const layerWidth = layer.getBoundingClientRect().width;
   if (viewport.rotation % 360 !== 0 || !viewport.width || !layerWidth) {
@@ -96,26 +90,19 @@ export function placeGlyphs(glyphLayer: GlyphLayer): PlacedGlyphs | null {
     });
   }
   placed.sort((a, b) => a.baseline - b.baseline);
-  return { glyphs: placed, layer, scale };
+  return placed;
 }
 
 export function snapToGlyphs(
-  placed: PlacedGlyphs,
-  container: HTMLElement,
+  glyphs: PlacedGlyph[],
   text: string,
   box: { left: number; top: number; width: number; height: number },
 ): { left: number; width: number; visible: boolean } | null {
   const target = normalizeText(text);
   if (!target) return null;
 
-  const layerRect = placed.layer.getBoundingClientRect();
-  const containerRect = container.getBoundingClientRect();
-  const offsetX = (layerRect.left - containerRect.left) / placed.scale;
-  const offsetY = (layerRect.top - containerRect.top) / placed.scale;
-
-  const lineTop = box.top - offsetY - 1;
-  const lineBottom = box.top + box.height - offsetY + 1;
-  const { glyphs } = placed;
+  const lineTop = box.top - 1;
+  const lineBottom = box.top + box.height + 1;
   let low = 0;
   let high = glyphs.length;
   while (low < high) {
@@ -125,11 +112,7 @@ export function snapToGlyphs(
   }
   let end = low;
   while (end < glyphs.length && glyphs[end].baseline <= lineBottom) end++;
-  const line = glyphs.slice(low, end).map((glyph) => ({
-    ...glyph,
-    left: glyph.left + offsetX,
-    right: glyph.right + offsetX,
-  }));
+  const line = glyphs.slice(low, end);
   line.sort((a, b) => a.left - b.left);
 
   let lineText = "";
