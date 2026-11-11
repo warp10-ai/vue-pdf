@@ -8,6 +8,7 @@ import type { HighlightEventPayload } from "@warp10-ai/vue-pdf/src/components/ty
 
 import a14PDF from "@samples/14.pdf";
 import a45PDF from "@samples/45.pdf";
+import dipietroPDF from "@samples/dipietro.pdf";
 import xfaPDF from "@samples/xfa.pdf";
 
 describe("Text Layer", () => {
@@ -180,6 +181,44 @@ describe("Text Layer", () => {
     expect(wrapper.findAll(".pdf-highlight").length).toBeGreaterThan(0);
     wrapper.unmount();
     host.remove();
+  });
+});
+
+describe("Marked content", () => {
+  const { pdf } = usePDF(dipietroPDF);
+
+  beforeAll(async () => {
+    await vi.waitUntil(() => pdf.value, { timeout: 5000 });
+  });
+
+  test("Highlight a match spanning marked-content containers", async () => {
+    // On page 1, "MD" and ", PhD" sit in different marked-content containers
+    const matcher = (text: string) => {
+      const start = text.indexOf("MD, PhD");
+      return [{ start, end: start + 7, keyword: "MD, PhD", key: "degree" }];
+    };
+
+    const wrapper = mount(VuePDF, {
+      props: { pdf: pdf.value, textLayer: true, highlightMatcher: matcher },
+      attachTo: document.body,
+    });
+    await vi.waitUntil(() => wrapper.emitted("highlight"));
+
+    const layer = wrapper.get("div.textLayer").element;
+    const highlight = wrapper.get(".pdf-highlight").element;
+    expect(highlight.parentElement).toBe(layer);
+
+    const spans = [...layer.querySelectorAll("span:not(.markedContent)")];
+    const first = spans.find((span) => span.textContent?.endsWith("MD"))!;
+    const last = spans.find((span) => span.textContent === ", PhD")!;
+    const range = document.createRange();
+    range.setStart(first.firstChild!, first.textContent!.length - 2);
+    range.setEnd(last.firstChild!, last.textContent!.length);
+    const text = range.getBoundingClientRect();
+    const drawn = highlight.getBoundingClientRect();
+    expect(Math.abs(drawn.left - text.left)).toBeLessThan(3);
+    expect(Math.abs(drawn.right - text.right)).toBeLessThan(3);
+    wrapper.unmount();
   });
 });
 

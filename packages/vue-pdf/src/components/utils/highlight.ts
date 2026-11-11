@@ -183,15 +183,16 @@ function highlightMatches(
 
     if (!startDiv || !endDiv || !startItem || !endItem) return;
 
-    const container = startDiv.parentElement;
-    if (!container) return;
-
     const highlightId = `highlight-${match.start.idx}-${match.start.offset}-${match.end.idx}-${match.end.offset}`;
-    const start = measureText(startDiv, match.start.offset).width / scale;
-    const end = measureText(endDiv, match.end.offset).width / scale;
-
-    // Calculate the total width for multi-div highlights
-    const totalWidth = endDiv.offsetLeft + end - (startDiv.offsetLeft + start);
+    const layerRect = layer.getBoundingClientRect();
+    const startRect = startDiv.getBoundingClientRect();
+    const endRect = endDiv.getBoundingClientRect();
+    const startWidth = measureText(startDiv, match.start.offset).width;
+    const endWidth = measureText(endDiv, match.end.offset).width;
+    const left = (startRect.left - layerRect.left + startWidth) / scale;
+    const right = (endRect.left - layerRect.left + endWidth) / scale;
+    const top = (startRect.top - layerRect.top) / scale;
+    const height = endRect.height / scale;
 
     const highlightText = textContent.items
       .slice(match.start.idx, match.end.idx + 1)
@@ -206,24 +207,23 @@ function highlightMatches(
       })
       .join("");
 
-    const estimatedLeft = startDiv.offsetLeft + start;
     let snapped: ReturnType<typeof snapToGlyphs> = null;
     if (placed) {
-      snapped = snapToGlyphs(placed, container, highlightText, {
-        left: estimatedLeft,
-        top: startDiv.offsetTop,
-        width: totalWidth,
-        height: endDiv.offsetHeight,
+      snapped = snapToGlyphs(placed, layer, highlightText, {
+        left,
+        top,
+        width: right - left,
+        height,
       });
     }
     if (snapped && !snapped.visible) return;
 
     const styleProps = {
       position: "absolute",
-      top: `${startDiv.offsetTop}px`,
-      left: `${snapped?.left ?? estimatedLeft}px`,
-      width: `${snapped?.width ?? totalWidth}px`,
-      height: `${endDiv.offsetHeight}px`,
+      top: `${top}px`,
+      left: `${snapped?.left ?? left}px`,
+      width: `${snapped?.width ?? right - left}px`,
+      height: `${height}px`,
       pointerEvents: "none",
       zIndex: "1",
       whiteSpace: "nowrap",
@@ -237,7 +237,7 @@ function highlightMatches(
       customHighlightClass,
     );
 
-    container.appendChild(highlight);
+    layer.appendChild(highlight);
     drawn.push({
       element: highlight,
       text: highlightText,
