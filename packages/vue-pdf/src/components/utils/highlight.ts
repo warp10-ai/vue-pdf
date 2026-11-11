@@ -145,79 +145,73 @@ function highlightMatches(
     if (!container) return;
 
     const highlightId = `highlight-${idx}-${startOffset}-${endOffset}`;
-    const existingHighlights = container.querySelectorAll(
-      `[id^="${highlightId}"]`,
+    // Create a selection for the text
+    const selection = window.getSelection();
+    if (!selection) return;
+
+    // Create a range for the text
+    const range = document.createRange();
+    const textNode = currentDiv.firstChild;
+    if (!textNode) return;
+
+    // Set the range to the text we want to highlight
+    range.setStart(textNode, startOffset >= 0 ? startOffset : 0);
+    range.setEnd(
+      textNode,
+      endOffset >= 0 ? endOffset : textNode.textContent?.length || 0,
     );
 
-    if (existingHighlights.length === 0) {
-      // Create a selection for the text
-      const selection = window.getSelection();
-      if (!selection) return;
+    // Get the bounding rectangles of the selection
+    const rects = range.getClientRects();
+    if (rects.length === 0) return;
 
-      // Create a range for the text
-      const range = document.createRange();
-      const textNode = currentDiv.firstChild;
-      if (!textNode) return;
+    // Get the container's position
+    const containerRect = container.getBoundingClientRect();
 
-      // Set the range to the text we want to highlight
-      range.setStart(textNode, startOffset >= 0 ? startOffset : 0);
-      range.setEnd(
-        textNode,
-        endOffset >= 0 ? endOffset : textNode.textContent?.length || 0,
+    // Create highlight for each rectangle (in case text wraps)
+    for (let i = 0; i < rects.length; i++) {
+      const rect = rects[i];
+
+      // Calculate position relative to container
+      const y = (rect.top - containerRect.top) / scale;
+      const left = (rect.left - containerRect.left) / scale;
+      let snapped: ReturnType<typeof snapToGlyphs> = null;
+      if (glyphLayer && rects.length === 1) {
+        snapped = snapToGlyphs(glyphLayer, container, content, {
+          left,
+          top: y,
+          width: rect.width / scale,
+          height: rect.height / scale,
+        });
+      }
+      if (snapped && !snapped.visible) continue;
+      const x = snapped?.left ?? left;
+      const textWidth = snapped?.width ?? rect.width / scale;
+
+      const styleProps = {
+        position: "absolute",
+        top: `${y}px`,
+        left: `${x}px`,
+        width: `${textWidth}px`,
+        height: `${rect.height / scale}px`,
+        pointerEvents: "all",
+        zIndex: "1",
+        whiteSpace: "nowrap",
+      };
+
+      const highlightElement = createHighlightElement(
+        `${highlightId}-${i}`,
+        styleProps,
+        content,
+        match,
+        renderOptions,
       );
 
-      // Get the bounding rectangles of the selection
-      const rects = range.getClientRects();
-      if (rects.length === 0) return;
-
-      // Get the container's position
-      const containerRect = container.getBoundingClientRect();
-
-      // Create highlight for each rectangle (in case text wraps)
-      for (let i = 0; i < rects.length; i++) {
-        const rect = rects[i];
-
-        // Calculate position relative to container
-        const y = (rect.top - containerRect.top) / scale;
-        const left = (rect.left - containerRect.left) / scale;
-        let snapped: ReturnType<typeof snapToGlyphs> = null;
-        if (glyphLayer && rects.length === 1) {
-          snapped = snapToGlyphs(glyphLayer, container, content, {
-            left,
-            top: y,
-            width: rect.width / scale,
-            height: rect.height / scale,
-          });
-        }
-        if (snapped && !snapped.visible) continue;
-        const x = snapped?.left ?? left;
-        const textWidth = snapped?.width ?? rect.width / scale;
-
-        const styleProps = {
-          position: "absolute",
-          top: `${y}px`,
-          left: `${x}px`,
-          width: `${textWidth}px`,
-          height: `${rect.height / scale}px`,
-          pointerEvents: "all",
-          zIndex: "1",
-          whiteSpace: "nowrap",
-        };
-
-        const highlightElement = createHighlightElement(
-          `${highlightId}-${i}`,
-          styleProps,
-          content,
-          match,
-          renderOptions,
-        );
-
-        container.appendChild(highlightElement);
-      }
-
-      // Clear the selection
-      selection.removeAllRanges();
+      container.appendChild(highlightElement);
     }
+
+    // Clear the selection
+    selection.removeAllRanges();
   }
 
   function highlightLine(
@@ -256,62 +250,57 @@ function highlightMatches(
     if (!container) return;
 
     const highlightId = `highlight-${match.start.idx}-${match.start.offset}-${match.end.idx}-${match.end.offset}`;
-    let highlight = container.querySelector(`#${highlightId}`) as HTMLElement;
+    const start = measureText(startDiv, match.start.offset).width / scale;
+    const end = measureText(endDiv, match.end.offset).width / scale;
 
-    if (!highlight) {
-      const start = measureText(startDiv, match.start.offset).width / scale;
-      const end = measureText(endDiv, match.end.offset).width / scale;
+    // Calculate the total width for multi-div highlights
+    const totalWidth = endDiv.offsetLeft + end - (startDiv.offsetLeft + start);
 
-      // Calculate the total width for multi-div highlights
-      const totalWidth =
-        endDiv.offsetLeft + end - (startDiv.offsetLeft + start);
+    const highlightText = textContent.items
+      .slice(match.start.idx, match.end.idx + 1)
+      .map((item, index) => {
+        if (!("str" in item)) return "";
+        let text = item.str;
+        if (index === 0) text = text.substring(match.start.offset);
+        if (index === match.end.idx - match.start.idx) {
+          text = text.substring(0, match.end.offset);
+        }
+        return text;
+      })
+      .join("");
 
-      const highlightText = textContent.items
-        .slice(match.start.idx, match.end.idx + 1)
-        .map((item, index) => {
-          if (!("str" in item)) return "";
-          let text = item.str;
-          if (index === 0) text = text.substring(match.start.offset);
-          if (index === match.end.idx - match.start.idx) {
-            text = text.substring(0, match.end.offset);
-          }
-          return text;
-        })
-        .join("");
-
-      const estimatedLeft = startDiv.offsetLeft + start;
-      let snapped: ReturnType<typeof snapToGlyphs> = null;
-      if (glyphLayer) {
-        snapped = snapToGlyphs(glyphLayer, container, highlightText, {
-          left: estimatedLeft,
-          top: startDiv.offsetTop,
-          width: totalWidth,
-          height: endDiv.offsetHeight,
-        });
-      }
-      if (snapped && !snapped.visible) return;
-
-      const styleProps = {
-        position: "absolute",
-        top: `${startDiv.offsetTop}px`,
-        left: `${snapped?.left ?? estimatedLeft}px`,
-        width: `${snapped?.width ?? totalWidth}px`,
-        height: `${endDiv.offsetHeight}px`,
-        pointerEvents: "all",
-        zIndex: "1",
-        whiteSpace: "nowrap",
-      };
-
-      highlight = createHighlightElement(
-        highlightId,
-        styleProps,
-        highlightText,
-        match,
-        renderOptions,
-      );
-
-      container.appendChild(highlight);
+    const estimatedLeft = startDiv.offsetLeft + start;
+    let snapped: ReturnType<typeof snapToGlyphs> = null;
+    if (glyphLayer) {
+      snapped = snapToGlyphs(glyphLayer, container, highlightText, {
+        left: estimatedLeft,
+        top: startDiv.offsetTop,
+        width: totalWidth,
+        height: endDiv.offsetHeight,
+      });
     }
+    if (snapped && !snapped.visible) return;
+
+    const styleProps = {
+      position: "absolute",
+      top: `${startDiv.offsetTop}px`,
+      left: `${snapped?.left ?? estimatedLeft}px`,
+      width: `${snapped?.width ?? totalWidth}px`,
+      height: `${endDiv.offsetHeight}px`,
+      pointerEvents: "all",
+      zIndex: "1",
+      whiteSpace: "nowrap",
+    };
+
+    const highlight = createHighlightElement(
+      highlightId,
+      styleProps,
+      highlightText,
+      match,
+      renderOptions,
+    );
+
+    container.appendChild(highlight);
   }
 
   for (const match of matches) {

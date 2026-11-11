@@ -101,6 +101,31 @@ describe("Text Layer", () => {
     expect(matches).toHaveLength(returned);
     expect(matches.every((match) => match.str.trim())).toBe(true);
   });
+
+  test("Highlight overlapping results", async () => {
+    // The same range under two keys, and a range that shares its start with a longer one
+    const matcher = (text: string) => {
+      const start = text.search(/\w{12}/);
+      return [
+        { start, end: start + 12, keyword: "long", key: "a" },
+        { start, end: start + 12, keyword: "long", key: "b" },
+        { start, end: start + 1, keyword: "short", key: "c" },
+      ];
+    };
+
+    const wrapper = mount(VuePDF, {
+      props: { pdf: pdf.value, textLayer: true, highlightMatcher: matcher },
+      // Highlights are placed from measured text, which needs the page in the document
+      attachTo: document.body,
+    });
+    await vi.waitUntil(() => wrapper.emitted("highlight"));
+
+    const keys = wrapper
+      .findAll(".pdf-highlight")
+      .map((highlight) => highlight.attributes("data-highlight-id"));
+    expect(keys.sort()).toEqual(["a", "b", "c"]);
+    wrapper.unmount();
+  });
 });
 
 describe("Annotation Layer", () => {
