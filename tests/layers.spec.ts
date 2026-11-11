@@ -1,17 +1,22 @@
 import { beforeAll, describe, expect, test, vi } from "vitest";
 
 import { mount } from "@vue/test-utils";
+import { ref } from "vue";
 
 import { VuePDF, usePDF } from "@warp10-ai/vue-pdf/src";
-import type { HighlightEventPayload } from "@warp10-ai/vue-pdf/src/components/types.ts";
+import type {
+  HighlightEventPayload,
+  TextLayerLoadedEventPayload,
+} from "@warp10-ai/vue-pdf/src/components/types.ts";
 
 import a14PDF from "@samples/14.pdf";
 import a45PDF from "@samples/45.pdf";
+import dipietroPDF from "@samples/dipietro.pdf";
 import xfaPDF from "@samples/xfa.pdf";
 
 describe("Text Layer", () => {
   const { pdf } = usePDF(
-    "https://raw.githubusercontent.com/mozilla/pdf.js/ba2edeae/web/compressed.tracemonkey-pldi-09.pdf"
+    "https://raw.githubusercontent.com/mozilla/pdf.js/ba2edeae/web/compressed.tracemonkey-pldi-09.pdf",
   );
 
   beforeAll(async () => {
@@ -39,61 +44,200 @@ describe("Text Layer", () => {
   });
 
   test("Highlight", async () => {
+    const matcherFor = (pattern: RegExp) => (text: string) =>
+      [...text.matchAll(pattern)].map((match) => ({
+        start: match.index!,
+        end: match.index! + match[0].length,
+        keyword: match[0],
+        key: match[0].toLowerCase(),
+      }));
+
     const wrapper = mount(VuePDF, {
       props: {
         pdf: pdf.value,
         textLayer: true,
-        highlightText: "dynamic",
-        highlightOptions: {
-          completeWords: false,
-          ignoreCase: true,
-        },
+        highlightMatcher: matcherFor(/dynamic/gi),
       },
     });
 
     expect(wrapper).toBeTruthy();
     await vi.waitUntil(() => wrapper.emitted("highlight"));
 
-    expect(wrapper.emitted("highlight")).toHaveLength(1);
+    const first = wrapper.emitted("highlight")![0][0] as HighlightEventPayload;
+    expect(first.textDivs).toHaveLength(182);
+    expect(first.matches).toHaveLength(11);
     expect(
-      (wrapper.emitted("highlight")![0][0]! as HighlightEventPayload).textDivs
-    ).toHaveLength(182);
-    expect(
-      (wrapper.emitted("highlight")![0][0]! as HighlightEventPayload).matches
-    ).toHaveLength(11);
+      first.matches.every((match) => match.str.toLowerCase() === "dynamic"),
+    ).toBe(true);
 
-    await wrapper.setProps({
-      highlightOptions: {
-        completeWords: true,
-        ignoreCase: true,
-      },
-    });
+    await wrapper.setProps({ highlightMatcher: matcherFor(/\bdynamic\b/gi) });
     await vi.waitUntil(() => wrapper.emitted("highlight")?.length === 2);
     expect(
-      (wrapper.emitted("highlight")![1][0]! as HighlightEventPayload).matches
+      (wrapper.emitted("highlight")![1][0] as HighlightEventPayload).matches,
     ).toHaveLength(8);
 
-    await wrapper.setProps({
-      highlightOptions: {
-        ignoreCase: false,
-        completeWords: true,
-      },
-    });
+    await wrapper.setProps({ highlightMatcher: () => [] });
     await vi.waitUntil(() => wrapper.emitted("highlight")?.length === 3);
-    expect(
-      (wrapper.emitted("highlight")![2][0]! as HighlightEventPayload).matches
-    ).toHaveLength(5);
+    expect(wrapper.findAll(".pdf-highlight")).toHaveLength(0);
+  });
 
-    await wrapper.setProps({
-      highlightOptions: {
-        ignoreCase: false,
-        completeWords: false,
-      },
+  test("Highlight edges at line breaks", async () => {
+    let returned = 0;
+    // Each range starts or ends on whitespace, including the spaces added at line breaks
+    const matcher = (text: string) => {
+      const ranges = [...text.matchAll(/\s\w+|\w+\s/g)].map((match) => ({
+        start: match.index!,
+        end: match.index! + match[0].length,
+        keyword: match[0],
+        key: match.index!,
+      }));
+      returned = ranges.length;
+      return ranges;
+    };
+
+    const wrapper = mount(VuePDF, {
+      props: { pdf: pdf.value, textLayer: true, highlightMatcher: matcher },
     });
-    await vi.waitUntil(() => wrapper.emitted("highlight")?.length === 4);
-    expect(
-      (wrapper.emitted("highlight")![3][0]! as HighlightEventPayload).matches
-    ).toHaveLength(8);
+    await vi.waitUntil(() => wrapper.emitted("highlight"));
+
+    const { matches } = wrapper.emitted(
+      "highlight",
+    )![0][0] as HighlightEventPayload;
+    expect(matches).toHaveLength(returned);
+    expect(matches.every((match) => match.str.trim())).toBe(true);
+  });
+
+  test("Highlight overlapping results", async () => {
+    // The same range under two keys, a shorter range inside it, and a separate range after it
+    const matcher = (text: string) => {
+      const start = text.search(/\w{12}/);
+      const next = start + 12 + text.slice(start + 12).search(/\w{5}/);
+      return [
+        { start, end: start + 1, keyword: "short", key: "c" },
+        { start, end: start + 12, keyword: "long", key: "a" },
+        { start, end: start + 12, keyword: "long", key: "b" },
+        { start: next, end: next + 5, keyword: "next", key: "d" },
+      ];
+    };
+
+    const wrapper = mount(VuePDF, {
+      props: { pdf: pdf.value, textLayer: true, highlightMatcher: matcher },
+      // Highlights are placed from measured text, which needs the page in the document
+      attachTo: document.body,
+    });
+    await vi.waitUntil(() => wrapper.emitted("highlight"));
+
+    const keys = wrapper
+      .findAll(".pdf-highlight")
+      .map((highlight) => highlight.attributes("data-highlight-id"));
+    expect(keys.sort()).toEqual(["a", "d"]);
+    wrapper.unmount();
+  });
+
+  test("Highlight when a matcher's reactive input changes", async () => {
+    const query = ref("dynamic");
+    const matcher = (text: string) =>
+      [...text.matchAll(new RegExp(query.value, "gi"))].map((match) => ({
+        start: match.index!,
+        end: match.index! + match[0].length,
+        keyword: query.value,
+        key: query.value,
+      }));
+
+    const wrapper = mount(VuePDF, {
+      props: { pdf: pdf.value, textLayer: true, highlightMatcher: matcher },
+    });
+    await vi.waitUntil(() => wrapper.emitted("highlight"));
+
+    query.value = "trace";
+    await vi.waitUntil(() => wrapper.emitted("highlight")?.length === 2);
+    const { matches } = wrapper.emitted(
+      "highlight",
+    )![1][0] as HighlightEventPayload;
+    expect(matches.length).toBeGreaterThan(0);
+    expect(matches.every((match) => match.str.toLowerCase() === "trace")).toBe(
+      true,
+    );
+  });
+
+  test("Highlight once a hidden viewer is shown", async () => {
+    const host = document.createElement("div");
+    host.style.display = "none";
+    document.body.appendChild(host);
+    const matcher = (text: string) =>
+      [...text.matchAll(/dynamic/gi)].map((match) => ({
+        start: match.index!,
+        end: match.index! + match[0].length,
+        keyword: "dynamic",
+        key: "dynamic",
+      }));
+
+    const wrapper = mount(VuePDF, {
+      props: { pdf: pdf.value, textLayer: true, highlightMatcher: matcher },
+      attachTo: host,
+    });
+    await vi.waitUntil(() => wrapper.emitted("highlight"));
+    const drawn = wrapper.emitted("highlight")!.length;
+
+    host.style.display = "block";
+    await vi.waitUntil(() => wrapper.emitted("highlight")!.length > drawn);
+    expect(wrapper.findAll(".pdf-highlight").length).toBeGreaterThan(0);
+    wrapper.unmount();
+    host.remove();
+  });
+});
+
+describe("Marked content", () => {
+  const { pdf } = usePDF(dipietroPDF);
+
+  beforeAll(async () => {
+    await vi.waitUntil(() => pdf.value, { timeout: 5000 });
+  });
+
+  test("Highlight a match spanning marked-content containers", async () => {
+    // On page 1, "MD" and ", PhD" sit in different marked-content containers,
+    // and "Alessandra" comes earlier in the same container as "MD"
+    const matcher = (text: string) => {
+      const name = text.indexOf("Alessandra");
+      const start = text.indexOf("MD, PhD");
+      return [
+        { start: name, end: name + 10, keyword: "Alessandra", key: "name" },
+        { start, end: start + 7, keyword: "MD, PhD", key: "degree" },
+      ];
+    };
+
+    const wrapper = mount(VuePDF, {
+      props: { pdf: pdf.value, textLayer: true, highlightMatcher: matcher },
+      attachTo: document.body,
+    });
+    await vi.waitUntil(() => wrapper.emitted("highlight"));
+    await vi.waitUntil(() => wrapper.emitted("textLoaded"));
+
+    const loaded = wrapper.emitted(
+      "textLoaded",
+    )![0][0] as TextLayerLoadedEventPayload;
+    expect(loaded.textContent?.items).toHaveLength(loaded.textDivs.length);
+
+    const layer = wrapper.get("div.textLayer").element;
+    const highlight = wrapper.get('[data-highlight-id="degree"]').element;
+    expect(highlight.parentElement).toBe(layer);
+
+    const spans = [...layer.querySelectorAll("span:not(.markedContent)")];
+    const first = spans.find((span) => span.textContent?.endsWith("MD"))!;
+    const last = spans.find((span) => span.textContent === ", PhD")!;
+    const measure = (span: Element, start: number, end: number) => {
+      const range = document.createRange();
+      range.setStart(span.firstChild!, start);
+      range.setEnd(span.firstChild!, end);
+      return range.getBoundingClientRect();
+    };
+    const length = first.textContent!.length;
+    const textLeft = measure(first, length - 2, length).left;
+    const textRight = measure(last, 0, last.textContent!.length).right;
+    const drawn = highlight.getBoundingClientRect();
+    expect(Math.abs(drawn.left - textLeft)).toBeLessThan(3);
+    expect(Math.abs(drawn.right - textRight)).toBeLessThan(3);
+    wrapper.unmount();
   });
 });
 
@@ -221,7 +365,7 @@ describe("Annotation Layer", () => {
     expect(wrapper).toBeTruthy();
 
     await vi.waitUntil(
-      () => wrapper.get("div.annotationLayer").element.childNodes.length > 0
+      () => wrapper.get("div.annotationLayer").element.childNodes.length > 0,
     );
 
     const indexLink = wrapper.get('a[data-element-id="13R"]')

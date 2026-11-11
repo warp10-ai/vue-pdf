@@ -1,721 +1,208 @@
 import type { TextItem } from "pdfjs-dist/types/src/display/api";
 import type { TextContent } from "pdfjs-dist/types/src/display/text_layer";
-import type { HighlightOptions, Match } from "../types";
-import { normalize } from "node:path";
+import type { HighlightMatcher, Match } from "../types";
+import {
+  placeGlyphs,
+  screenScale,
+  snapToGlyphs,
+  type GlyphLayer,
+} from "./glyphs";
 
-// Cache management
-// ----------------
-const measurementsCache = new Map<string, DOMRect>();
-let computedStylesCache = new WeakMap<HTMLElement, CSSStyleDeclaration>();
-
-interface DOMHelpers {
-  getMeasurements(div: HTMLElement, text: string): DOMRect;
-  getComputedStylesFor(element: HTMLElement): CSSStyleDeclaration;
-  clearCache(): void;
-}
-
-const domHelpers: DOMHelpers = {
-  getMeasurements(div: HTMLElement, text: string): DOMRect {
-    const key = `${div.offsetTop}-${text}`;
-    if (!measurementsCache.has(key)) {
-      const measureDiv = document.createElement("span");
-      measureDiv.textContent = text;
-      measureDiv.style.visibility = "hidden";
-      div.appendChild(measureDiv);
-      const rect = measureDiv.getBoundingClientRect();
-      div.removeChild(measureDiv);
-      measurementsCache.set(key, rect);
-    }
-    return measurementsCache.get(key)!;
-  },
-
-  getComputedStylesFor(element: HTMLElement): CSSStyleDeclaration {
-    if (!computedStylesCache.has(element)) {
-      computedStylesCache.set(element, window.getComputedStyle(element));
-    }
-    return computedStylesCache.get(element)!;
-  },
-
-  clearCache(): void {
-    measurementsCache.clear();
-    computedStylesCache = new WeakMap<HTMLElement, CSSStyleDeclaration>();
-  },
-};
-
-
-function removeSpecialChars(text: string, customChars?: string[]): string {
-  let result = text.normalize('NFKD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[®©™℠]/g, '')
-    .replace(/[^\w\s]{5,}/g, '')
-    .replace(/[^\w\s]+$/g, '') // Remove trailing special characters
-    .trim();
-  
-  // Remove custom characters if provided
-  if (customChars && customChars.length > 0) {
-    const customRegex = new RegExp(`[${customChars.map(char => 
-      char.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    ).join('')}]`, 'g');
-    result = result.replace(customRegex, '');
-  }
-  
-  return result;
-}
-
-function searchQuery(
-  textContent: TextContent,
-  query: string,
-  options: HighlightOptions
-): Array<[number, number, string]> {
-  const strs = [];
-  for (const textItem of textContent.items as TextItem[]) {
-    if (textItem.hasEOL) {
-      // Remove the break line hyphen in the middle of the sentence
-      if (textItem.str.endsWith("-")) {
-        const lastHyphen = textItem.str.lastIndexOf("-");
-        strs.push(textItem.str.substring(0, lastHyphen));
-      } else {
-        strs.push(textItem.str, "\n");
-      }
-    } else {
-      strs.push(textItem.str);
-    }
-  }
-
-  // Join the text as is presented in textlayer and then replace newlines (/n) with whitespaces
-  const textJoined = strs.join("").replace(/\n/g, " ");
-
-  // Fix: Use proper Unicode characters for curly quotes - use Unicode escape sequences
-  const cleanedText = textJoined.replace(/[\u201C\u201D(),.'`]/g, ' ');
-
-  // Split text into words, treating slashes as word separators
-  const textWords = cleanedText
-    .split(/[\s/]+/)
-    .filter(word => word.length > 0);
-    
-
-  const queryWords = query.trim().split(/\s+/).filter(word => word.length > 0);
-  
-
-  
-
-  
-  // Create a mapping to reconstruct original positions
-  const originalText = textJoined;
-  const wordPositions: Array<{ word: string; start: number; end: number }> = [];
-  
-  let currentIndex = 0;
-  for (const word of textWords) {
-    const start = originalText.indexOf(word, currentIndex);
-    const end = start + word.length;
-    wordPositions.push({ word, start, end });
-    currentIndex = end;
-  }
-  
-  // Normalize query words
-  const normalizedQueryWords = queryWords.map(word => 
-    removeSpecialChars(word, options.customSpecialChars)
-  );
-  
-  const matches: Array<[number, number, string]> = [];
-  
-  // Search for word sequences
-  for (let i = 0; i <= textWords.length - normalizedQueryWords.length; i++) {
-    let matchFound = true;
-    let matchStart = -1;
-    let matchEnd = -1;
-    
-    // Check if all query words match starting from position i
-    for (let j = 0; j < normalizedQueryWords.length; j++) {
-      const textWord = textWords[i + j];
-      const normalizedTextWord = removeSpecialChars(textWord, options.customSpecialChars);
-      const queryWord = normalizedQueryWords[j];
-      
-      const textWordToCompare = options.ignoreCase ? normalizedTextWord.toLowerCase() : normalizedTextWord;
-      const queryWordToCompare = options.ignoreCase ? queryWord.toLowerCase() : queryWord;
-      
-      // Fix: Use proper Unicode characters for curly quotes - use Unicode escape sequences
-      const textClean = textWordToCompare.replace(/[\u201C\u201D(),."'`]/g, '');
-      const queryClean = queryWordToCompare.replace(/[\u201C\u201D(),."'`]/g, '');
-      
-
-      
-      // Check for exact match or partial match within hyphenated words
-      let isMatch = false;
-      
-      if (textClean === queryClean) {
-        // Exact word match
-        isMatch = true;
-
-      } else if (!queryClean.includes('-') && textClean.includes('-') && textClean.includes(queryClean)) {
-        // Partial match: query word is contained within a hyphenated word
-        isMatch = true;
-
-      }
-      
-      if (!isMatch) {
-        matchFound = false;
-        break;
-      }
-      
-      // Track start and end positions using the word positions mapping
-      if (j === 0) {
-        // Find start position of first word
-        matchStart = wordPositions[i]?.start || 0;
-      }
-      
-      if (j === normalizedQueryWords.length - 1) {
-        // Find end position of last word
-        const lastWordIndex = i + normalizedQueryWords.length - 1;
-        matchEnd = wordPositions[lastWordIndex]?.end || matchStart;
-      }
-    }
-    
-    if (matchFound) {
-      // Check if we need to create partial matches for hyphenated words
-      let hasPartialMatch = false;
-      const partialMatches: Array<[number, number, string]> = [];
-      
-      for (let j = 0; j < normalizedQueryWords.length; j++) {
-        const textWord = textWords[i + j];
-        const normalizedTextWord = removeSpecialChars(textWord, options.customSpecialChars);
-        const queryWord = normalizedQueryWords[j];
-        
-        const textWordToCompare = options.ignoreCase ? normalizedTextWord.toLowerCase() : normalizedTextWord;
-        const queryWordToCompare = options.ignoreCase ? queryWord.toLowerCase() : queryWord;
-        
-        // Fix: Use proper Unicode characters for curly quotes - use Unicode escape sequences
-        const textClean = textWordToCompare.replace(/[\u201C\u201D(),."'`]/g, '');
-        const queryClean = queryWordToCompare.replace(/[\u201D\u201C(),."'`]/g, '');
-        
-        if (textClean !== queryClean && !queryClean.includes('-') && textClean.includes('-') && textClean.includes(queryClean)) {
-          // Partial match: create highlight for just the query part
-          hasPartialMatch = true;
-          const queryStartInWord = textClean.indexOf(queryClean);
-          const partialStart = wordPositions[i + j]?.start || 0;
-          const partialMatchStart = partialStart + queryStartInWord;
-          const partialMatchEnd = partialMatchStart + queryClean.length;
-          partialMatches.push([partialMatchStart, queryClean.length, queryClean]);
-        }
-      }
-      
-      if (hasPartialMatch) {
-        // Add partial matches instead of the full word match
-        matches.push(...partialMatches);
-      } else {
-        // Normal full word match
-        const matchLength = matchEnd - matchStart;
-        const matchText = textWords.slice(i, i + normalizedQueryWords.length).join(' ');
-        matches.push([matchStart, matchLength, matchText]);
-      }
-    }
-  }
-
-  return matches;
-}
-
-function convertMatches(
-  matches: Array<[number, number, string]>,
-  textContent: TextContent
-): Match[] {
-  function endOfLineOffset(item: TextItem): number {
-    if (item.hasEOL) {
-      if (item.str.endsWith("-")) return -1;
-      else return 1;
-    }
-    return 0;
-  }
-
-  function areInSameLine(startIdx: number, endIdx: number): boolean {
-    for (let i = startIdx; i < endIdx; i++) {
-      if ((textContent.items[i] as TextItem).hasEOL) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  let index = 0;
-  let tindex = 0;
-  const textItems = textContent.items as TextItem[];
-  const end = textItems.length - 1;
-
-  const convertedMatches: Match[] = [];
-
-  for (let m = 0; m < matches.length; m++) {
-    let mindex = matches[m][0];
-
-    while (index !== end && mindex >= tindex + textItems[index].str.length) {
-      const item = textItems[index];
-      tindex += item.str.length + endOfLineOffset(item);
-      index++;
-    }
-
-    const divStart = {
-      idx: index,
-      offset: mindex - tindex,
-    };
-
-    mindex += matches[m][1];
-
-    while (index !== end && mindex > tindex + textItems[index].str.length) {
-      const item = textItems[index];
-      tindex += item.str.length + endOfLineOffset(item);
-      index++;
-    }
-
-    const divEnd = {
-      idx: index,
-      offset: mindex - tindex,
-    };
-
-    const isMultiDiv = divStart.idx !== divEnd.idx;
-    const areSameLine = areInSameLine(divStart.idx, divEnd.idx);
-
-    const isMultiDivByLineBreak = isMultiDiv && !areSameLine;
-    const isMultiDivSameLine = isMultiDiv && areSameLine;
-
-    convertedMatches.push({
-      start: divStart,
-      end: divEnd,
-      str: matches[m][2],
-      index: matches[m][0],
-      key: "",
-      keyword: "",
-      isMultiDivByLineBreak,
-      isMultiDivSameLine,
-    });
-  }
-
-  return convertedMatches;
-}
-
-// Highlight rendering functions
-// ----------------------------
-interface HighlightEventHandlers {
-  onClick?: (
-    event: MouseEvent,
-    text: string,
-    key: string | number,
-    keyword: string,
-    isCurrentlyActive?: boolean
-  ) => void;
-  onMouseEnter?: (
-    event: MouseEvent,
-    text: string,
-    key: string | number,
-    keyword: string
-  ) => void;
-  onMouseLeave?: () => void;
-}
-
-interface HighlightRenderOptions {
-  customHighlightClass?: string;
-  activeHighlightTextColor?: string;
-  customActiveHighlightClass?: string;
-  activeHighlightText?: string | string[];
-  eventHandlers?: HighlightEventHandlers;
-}
-
-// Helper function to check if a keyword is active
-function isKeywordActive(keyword: string, activeHighlightText?: string | string[]): boolean {
-  if (!activeHighlightText) return false;
-  
-  if (typeof activeHighlightText === 'string') {
-    return keyword.toLowerCase() === activeHighlightText.toLowerCase();
-  }
-  
-  if (Array.isArray(activeHighlightText)) {
-    const result = activeHighlightText.some(text => 
-      keyword.toLowerCase() === text.toLowerCase()
-    );
-    
-
-    
-    return result;
-  }
-  
-  return false;
+export interface DrawnHighlight {
+  element: HTMLElement;
+  text: string;
+  key: string | number;
+  keyword: string;
+  box: DOMRect;
 }
 
 function createHighlightElement(
-  id: string,
   styleProps: Partial<CSSStyleDeclaration>,
-  content: string,
   match: Match,
-  options: HighlightRenderOptions
+  highlightClass: string,
 ): HTMLElement {
-  const highlight = document.createElement("div");
-  highlight.id = id;
-  highlight.className = `pdf-highlight ${
-    options.customHighlightClass || "highlight"
-  }`;
+  const highlight = document.createElement("mark");
+  highlight.className = `pdf-highlight ${highlightClass}`;
 
   Object.assign(highlight.style, styleProps);
 
-  highlight.dataset.text = content;
-  highlight.dataset.key = String(match.key);
-  highlight.dataset.keyword = match.keyword;
-
-  const { eventHandlers } = options;
-
-  if (eventHandlers?.onClick && match.key && match.keyword) {
-    highlight.style.cursor = "pointer";
-    highlight.addEventListener("click", (event) => {
-      event.stopPropagation();
-      
-      // Check if the clicked keyword is already in the active array
-      const isCurrentlyActive = isKeywordActive(match.keyword as string, options.activeHighlightText);
-      
-      // Pass whether the keyword is currently active to the click handler
-      eventHandlers.onClick!(
-        event,
-        content,
-        match.key as string | number,
-        match.keyword as string,
-        isCurrentlyActive
-      );
-    });
-  }
-
-  highlight.addEventListener("mouseenter", (event) => {
-    event.stopPropagation();
-    eventHandlers?.onMouseEnter?.(
-      event,
-      content,
-      match.key as string | number,
-      match.keyword as string
-    );
-  });
-
-  highlight.addEventListener("mouseleave", (event) => {
-    event.stopPropagation();
-    eventHandlers?.onMouseLeave?.();
-  });
-
+  highlight.dataset.highlightId = String(match.key);
   return highlight;
-}
-
-function addTextOverlay(
-  highlight: HTMLElement,
-  content: string,
-  referenceDiv: HTMLElement,
-  textColor?: string
-): void {
-  let textContainer = highlight.querySelector(
-    ".highlight-text"
-  ) as HTMLDivElement | null;
-
-  if (!textContainer) {
-    textContainer = document.createElement("div");
-    textContainer.className = "highlight-text";
-    textContainer.appendChild(document.createTextNode(content));
-
-    const computedStyle = domHelpers.getComputedStylesFor(referenceDiv);
-    const fontSize = parseFloat(computedStyle.fontSize);
-
-    // Copy all relevant text properties from the original element
-    const textStyles: Record<string, string> = {
-      position: "absolute",
-      top: "0",
-      left: "",
-      color: textColor || computedStyle.color,
-      fontSize: `${fontSize - 1}px`,
-      fontFamily: computedStyle.fontFamily,
-      fontWeight: computedStyle.fontWeight,
-      fontStyle: computedStyle.fontStyle,
-      letterSpacing: computedStyle.letterSpacing,
-      lineHeight: computedStyle.lineHeight,
-      textAlign: computedStyle.textAlign,
-      textTransform: computedStyle.textTransform,
-      fontVariant: computedStyle.fontVariant,
-      fontStretch: computedStyle.fontStretch,
-      wordSpacing: computedStyle.wordSpacing,
-      textDecoration: computedStyle.textDecoration,
-      textShadow: computedStyle.textShadow,
-      whiteSpace: computedStyle.whiteSpace,
-      wordBreak: computedStyle.wordBreak,
-      overflowWrap: computedStyle.overflowWrap,
-      direction: computedStyle.direction,
-      writingMode: computedStyle.writingMode,
-      textOrientation: computedStyle.textOrientation,
-      textRendering: computedStyle.textRendering,
-    };
-
-    Object.assign(textContainer.style, textStyles);
-
-    highlight.appendChild(textContainer);
-  } else {
-    textContainer.style.display = "block";
-  }
 }
 
 function highlightMatches(
   matches: Match[],
   textContent: TextContent,
   textDivs: HTMLElement[],
-  customHighlightClass: string = "highlight",
-  activeHighlightTextColor?: string,
-  customActiveHighlightClass?: string,
-  activeHighlightText?: string | string[],
-  onHighlightClick?: (
-    event: MouseEvent,
-    text: string,
-    key: string | number,
-    keyword: string,
-    isCurrentlyActive?: boolean
-  ) => void,
-  onHighlightMouseEnter?: (
-    event: MouseEvent,
-    text: string,
-    key: string | number,
-    keyword: string
-  ) => void,
-  onHighlightMouseLeave?: () => void
-) {
-  const renderOptions: HighlightRenderOptions = {
-    customHighlightClass,
-    activeHighlightTextColor,
-    customActiveHighlightClass,
-    activeHighlightText,
-    eventHandlers: {
-      onClick: onHighlightClick,
-      onMouseEnter: onHighlightMouseEnter,
-      onMouseLeave: onHighlightMouseLeave,
-    },
-  };
+  highlightClass: string,
+  glyphLayer: GlyphLayer,
+): DrawnHighlight[] {
+  const drawn: DrawnHighlight[] = [];
+  const { layer } = glyphLayer;
+  const scale = screenScale(layer);
+  const layerRect = layer.getBoundingClientRect();
+  const placed = placeGlyphs(glyphLayer);
 
   function appendHighlightDiv(
     match: Match,
     idx: number,
-    startOffset = -1,
-    endOffset = -1
+    startOffset: number,
+    endOffset: number,
   ) {
     const textItem = textContent.items[idx] as TextItem;
     const currentDiv = textDivs[idx];
     if (!currentDiv) return;
 
-    // Determine content for data-text attribute
-    let content = "";
-    if (startOffset >= 0 && endOffset >= 0) {
-      content = textItem.str.substring(startOffset, endOffset);
-    } else if (startOffset < 0 && endOffset < 0) {
-      content = textItem.str;
-    } else if (startOffset >= 0) {
-      content = textItem.str.substring(startOffset);
-    } else if (endOffset >= 0) {
-      content = textItem.str.substring(0, endOffset);
-    }
+    const content = textItem.str.substring(startOffset, endOffset);
+    // Create a range for the text
+    const range = document.createRange();
+    const textNode = currentDiv.firstChild;
+    if (!textNode) return;
 
-    const container = currentDiv.parentElement;
-    if (!container) return;
+    // Set the range to the text we want to highlight
+    range.setStart(textNode, startOffset);
+    range.setEnd(textNode, endOffset);
 
-    const highlightId = `highlight-${idx}-${startOffset}-${endOffset}`;
-    const existingHighlights = container.querySelectorAll(
-      `[id^="${highlightId}"]`
-    );
+    // Get the bounding rectangles of the range
+    const rects = range.getClientRects();
+    if (rects.length === 0) return;
 
-    if (existingHighlights.length === 0) {
-      // Create a selection for the text
-      const selection = window.getSelection();
-      if (!selection) return;
+    // Create highlight for each rectangle (in case text wraps)
+    for (let i = 0; i < rects.length; i++) {
+      const rect = rects[i];
 
-      // Create a range for the text
-      const range = document.createRange();
-      const textNode = currentDiv.firstChild;
-      if (!textNode) return;
+      // Calculate position relative to the text layer
+      const y = (rect.top - layerRect.top) / scale.y;
+      const left = (rect.left - layerRect.left) / scale.x;
+      let snapped: ReturnType<typeof snapToGlyphs> = null;
+      if (placed && rects.length === 1) {
+        snapped = snapToGlyphs(placed, content, {
+          left,
+          top: y,
+          width: rect.width / scale.x,
+          height: rect.height / scale.y,
+        });
+      }
+      if (snapped && !snapped.visible) continue;
+      const x = snapped?.left ?? left;
+      const textWidth = snapped?.width ?? rect.width / scale.x;
+      const height = rect.height / scale.y;
 
-      // Set the range to the text we want to highlight
-      range.setStart(textNode, startOffset >= 0 ? startOffset : 0);
-      range.setEnd(
-        textNode,
-        endOffset >= 0 ? endOffset : textNode.textContent?.length || 0
+      const styleProps = {
+        position: "absolute",
+        top: `${y}px`,
+        left: `${x}px`,
+        width: `${textWidth}px`,
+        height: `${height}px`,
+        pointerEvents: "none",
+        zIndex: "1",
+      };
+
+      const highlightElement = createHighlightElement(
+        styleProps,
+        match,
+        highlightClass,
       );
 
-      // Get the bounding rectangles of the selection
-      const rects = range.getClientRects();
-      if (rects.length === 0) return;
-
-      // Get the container's position
-      const containerRect = container.getBoundingClientRect();
-
-      // Create highlight for each rectangle (in case text wraps)
-      for (let i = 0; i < rects.length; i++) {
-        const rect = rects[i];
-
-        // Calculate position relative to container
-        const x = rect.left - containerRect.left;
-        const y = rect.top - containerRect.top;
-
-        // Calculate the center of the text
-        const textCenter = x + rect.width / 2;
-        // Calculate the new left position to center the highlight
-        const highlightLeft = textCenter - (rect.width + 14) / 2;
-
-        const isActive =
-          match.keyword &&
-          isKeywordActive(match.keyword, activeHighlightText) &&
-          customActiveHighlightClass;
-
-        const styleProps = {
-          position: "absolute",
-          top: `${y}px`,
-          left: `${highlightLeft}px`,
-          width: `${rect.width + 14}px`,
-          height: `${rect.height}px`,
-          pointerEvents: "all",
-          zIndex: "1",
-          whiteSpace: "nowrap",
-        };
-
-        const highlightElement = createHighlightElement(
-          `${highlightId}-${i}`,
-          styleProps,
-          content,
-          match,
-          renderOptions
-        );
-
-        highlightElement.className = `pdf-highlight ${
-          isActive ? customActiveHighlightClass : customHighlightClass
-        }`;
-
-        container.appendChild(highlightElement);
-      }
-
-      // Clear the selection
-      selection.removeAllRanges();
-    } else {
-      // Update existing highlights
-      const isActive =
-        match.keyword &&
-        isKeywordActive(match.keyword, activeHighlightText) &&
-        customActiveHighlightClass;
-
-      existingHighlights.forEach((h) => {
-        h.className = `pdf-highlight ${
-          isActive ? customActiveHighlightClass : customHighlightClass
-        }`;
+      layer.appendChild(highlightElement);
+      drawn.push({
+        element: highlightElement,
+        text: content,
+        key: match.key,
+        keyword: match.keyword,
+        box: new DOMRect(x, y, textWidth, height),
       });
     }
+  }
+
+  function highlightLine(
+    match: Match,
+    start: Match["start"],
+    end: Match["end"],
+  ) {
+    const itemLength = (idx: number) => {
+      const item = textContent.items[idx] as TextItem | undefined;
+      return item?.str.length ?? 0;
+    };
+    while (start.idx < end.idx && start.offset >= itemLength(start.idx)) {
+      start = { idx: start.idx + 1, offset: 0 };
+    }
+    while (end.idx > start.idx && end.offset === 0) {
+      end = { idx: end.idx - 1, offset: itemLength(end.idx - 1) };
+    }
+    if (start.idx === end.idx) {
+      if (end.offset > start.offset) {
+        appendHighlightDiv(match, start.idx, start.offset, end.offset);
+      }
+      return;
+    }
+    handleMultiDivHighlight({ ...match, start, end });
   }
 
   function handleMultiDivHighlight(match: Match) {
     const startDiv = textDivs[match.start.idx];
     const endDiv = textDivs[match.end.idx];
-    const startItem = textContent.items[match.start.idx] as TextItem;
-    const endItem = textContent.items[match.end.idx] as TextItem;
+    if (!startDiv || !endDiv) return;
 
-    if (!startDiv || !endDiv || !startItem || !endItem) return;
+    const startText = startDiv.firstChild;
+    const endText = endDiv.firstChild;
+    if (!startText || !endText) return;
+    const range = document.createRange();
+    range.setStart(startText, match.start.offset);
+    range.setEnd(endText, match.end.offset);
+    const rect = range.getBoundingClientRect();
+    const left = (rect.left - layerRect.left) / scale.x;
+    const right = (rect.right - layerRect.left) / scale.x;
+    const top = (rect.top - layerRect.top) / scale.y;
+    const height = rect.height / scale.y;
 
-    const container = startDiv.parentElement;
-    if (!container) return;
+    const highlightText = textContent.items
+      .slice(match.start.idx, match.end.idx + 1)
+      .map((item, index) => {
+        if (!("str" in item)) return "";
+        let text = item.str;
+        if (index === 0) text = text.substring(match.start.offset);
+        if (index === match.end.idx - match.start.idx) {
+          text = text.substring(0, match.end.offset);
+        }
+        return text;
+      })
+      .join("");
 
-    const highlightId = `highlight-${match.start.idx}-${match.start.offset}-${match.end.idx}-${match.end.offset}`;
-    let highlight = container.querySelector(`#${highlightId}`) as HTMLElement;
-
-    if (!highlight) {
-      const startMeasure = domHelpers.getMeasurements(
-        startDiv,
-        startItem.str.substring(0, match.start.offset)
-      );
-
-      const endMeasure = domHelpers.getMeasurements(
-        endDiv,
-        endItem.str.substring(0, match.end.offset)
-      );
-
-      // Calculate the total width for multi-div highlights
-      const totalWidth =
-        endDiv.offsetLeft +
-        endMeasure.width -
-        (startDiv.offsetLeft + startMeasure.width);
-
-      const styleProps = {
-        position: "absolute",
-        top: `${startDiv.offsetTop}px`,
-        left: `${startDiv.offsetLeft -7 + startMeasure.width}px`,
-        width: `${totalWidth + 14}px`,
-        height: `${endDiv.offsetHeight}px`,
-        pointerEvents: "all",
-        zIndex: "1",
-        whiteSpace: "nowrap",
-      };
-
-      const highlightText = textContent.items
-        .slice(match.start.idx, match.end.idx + 1)
-        .map((item, index) => {
-          if (!("str" in item)) return "";
-          let text = item.str;
-          if (index === 0) text = text.substring(match.start.offset);
-          if (index === match.end.idx - match.start.idx) {
-            text = text.substring(0, match.end.offset);
-          }
-          return text;
-        })
-        .join("");
-
-      const isActive =
-        match.keyword &&
-        isKeywordActive(match.keyword, activeHighlightText) &&
-        customActiveHighlightClass;
-
-      highlight = createHighlightElement(
-        highlightId,
-        styleProps,
-        highlightText,
-        match,
-        renderOptions
-      );
-
-      highlight.className = `pdf-highlight ${
-        isActive ? customActiveHighlightClass : customHighlightClass
-      }`;
-
-      container.appendChild(highlight);
+    let snapped: ReturnType<typeof snapToGlyphs> = null;
+    if (placed) {
+      snapped = snapToGlyphs(placed, highlightText, {
+        left,
+        top,
+        width: right - left,
+        height,
+      });
     }
+    if (snapped && !snapped.visible) return;
+    const x = snapped?.left ?? left;
+    const width = snapped?.width ?? right - left;
+    const box = new DOMRect(x, top, width, height);
 
-    const isActive =
-      match.keyword &&
-      isKeywordActive(match.keyword, activeHighlightText) &&
-      customActiveHighlightClass;
+    const styleProps = {
+      position: "absolute",
+      top: `${box.top}px`,
+      left: `${box.left}px`,
+      width: `${box.width}px`,
+      height: `${box.height}px`,
+      pointerEvents: "none",
+      zIndex: "1",
+    };
 
-    highlight.className = `pdf-highlight ${
-      isActive ? customActiveHighlightClass : customHighlightClass
-    }`;
+    const highlight = createHighlightElement(styleProps, match, highlightClass);
 
-    if (isActive) {
-      if (activeHighlightTextColor) {
-        highlight.style.color = activeHighlightTextColor;
-      }
-
-      const slicedContent = textContent.items
-        .slice(match.start.idx, match.end.idx + 1)
-        .map((item, index) => {
-          if (!("str" in item)) return "";
-          let text = item.str;
-          if (index === 0) text = text.substring(match.start.offset);
-          if (index === match.end.idx - match.start.idx) {
-            text = text.substring(0, match.end.offset);
-          }
-          return text;
-        })
-        .join("");
-
-      addTextOverlay(
-        highlight,
-        slicedContent,
-        textDivs[match.start.idx],
-        activeHighlightTextColor
-      );
-    } else {
-      const textContainer = highlight.querySelector(
-        ".highlight-text"
-      ) as HTMLElement;
-      if (textContainer) {
-        textContainer.style.display = "none";
-      }
-    }
+    layer.appendChild(highlight);
+    drawn.push({
+      element: highlight,
+      text: highlightText,
+      key: match.key,
+      keyword: match.keyword,
+      box,
+    });
   }
 
   for (const match of matches) {
@@ -725,119 +212,85 @@ function highlightMatches(
         match,
         match.start.idx,
         match.start.offset,
-        match.end.offset
+        match.end.offset,
       );
     } else if (match.isMultiDivByLineBreak) {
-      // Has line breaks
-      if (match.isMultiDivSameLine) {
-        // Has multiple divs in at least one line
-        handleMultiDivHighlight(match);
-      } else {
-        // Single div per line
-        for (let idx = match.start.idx; idx <= match.end.idx; idx++) {
-          const textItem = textContent.items[idx] as TextItem;
-          if (!textItem) continue;
+      let lineStart = match.start;
+      for (let idx = match.start.idx; idx <= match.end.idx; idx++) {
+        const textItem = textContent.items[idx] as TextItem;
+        const isLastItem = idx === match.end.idx;
+        if (!isLastItem && !textItem?.hasEOL) continue;
 
-          if (idx === match.start.idx) {
-            // First line
-            appendHighlightDiv(
-              match,
-              idx,
-              match.start.offset,
-              textItem.str.length
-            );
-          } else if (idx === match.end.idx) {
-            // Last line
-            appendHighlightDiv(match, idx, 0, match.end.offset);
-          } else {
-            // Middle lines
-            appendHighlightDiv(match, idx, 0, textItem.str.length);
-          }
-        }
+        highlightLine(
+          match,
+          lineStart,
+          isLastItem ? match.end : { idx, offset: textItem.str.length },
+        );
+        lineStart = { idx: idx + 1, offset: 0 };
       }
     } else if (match.isMultiDivSameLine) {
       // Multiple divs in same line without line breaks
       handleMultiDivHighlight(match);
     }
   }
+  return drawn;
 }
 
-function resetDivs(textContent: TextContent, textDivs: HTMLElement[]) {
-  const textItems = textContent.items.map((val) => (val as TextItem).str);
-  for (let idx = 0; idx < textDivs.length; idx++) {
-    const div = textDivs[idx];
-
-    if (div && div.nodeType !== Node.TEXT_NODE) {
-      const textNode = document.createTextNode(textItems[idx]);
-      div.replaceChildren(textNode);
-    }
-  }
-}
-
-// Main API functions
-// -----------------
-function findMatches(
-  queries: string[] | Array<{ keyword: string; key: string | number }>,
+function matchesFromMatcher(
+  matcher: HighlightMatcher,
   textContent: TextContent,
-  options: HighlightOptions
 ): Match[] {
-  // Sort queries by length (longest first)
-  const normalizedQueries =
-    Array.isArray(queries) && typeof queries[0] === "string"
-      ? (queries as string[]).map((keyword) => ({ keyword, key: keyword }))
-      : (queries as Array<{ keyword: string; key: string | number }>);
+  const items = textContent.items as TextItem[];
+  const positions: Array<{ idx: number; offset: number } | null> = [];
+  let text = "";
 
-  // Sort by keyword length (longest first) to prioritize longer matches
-  normalizedQueries.sort((a, b) => b.keyword.length - a.keyword.length);
-
-  const convertedMatches: Match[] = [];
-  // Keep track of ranges that are already highlighted
-  const highlightedRanges: Array<{ start: number; end: number }> = [];
-
-  function isOverlapping(start: number, end: number): boolean {
-    // Check if the new range (start,end) overlaps with any existing range
-    // Overlap cases:
-    // 1. start is inside an existing range
-    // 2. end is inside an existing range
-    // 3. new range completely contains an existing range
-    // 4. new range is completely contained within an existing range
-    return highlightedRanges.some(
-      (range) =>
-        // Case 1 & 4: start is inside the existing range
-        (start >= range.start && start < range.end) ||
-        // Case 2 & 4: end is inside the existing range
-        (end > range.start && end <= range.end) ||
-        // Case 3: new range completely contains the existing range
-        (start <= range.start && end >= range.end)
-    );
-  }
-
-  for (const query of normalizedQueries) {
-    const keyword = query.keyword;
-    const key = query.key;
-
-    const matches = searchQuery(textContent, keyword, options);
-    const currentMatches = convertMatches(matches, textContent);
-
-    // Filter out matches that would overlap with existing highlights
-    for (const match of currentMatches) {
-      const start = match.index;
-      const end = match.index + match.str.length;
-
-      // Check if this range overlaps with any existing highlight
-      if (!isOverlapping(start, end)) {
-        // No overlap - add to results and mark range as highlighted
-        highlightedRanges.push({ start, end });
-        convertedMatches.push({
-          ...match,
-          key: key,
-          keyword: keyword,
-        });
-      }
+  items.forEach((item, idx) => {
+    const str = item.str ?? "";
+    for (let offset = 0; offset < str.length; offset++) {
+      text += str[offset];
+      positions.push({ idx, offset });
     }
-  }
+    if (item.hasEOL && !text.endsWith("-")) {
+      text += " ";
+      positions.push(null);
+    }
+  });
 
-  return convertedMatches;
+  const hasLineBreak = (startIdx: number, endIdx: number) => {
+    return items.slice(startIdx, endIdx).some((item) => item.hasEOL);
+  };
+
+  const ranges = [...matcher(text)];
+  ranges.sort((a, b) => a.start - b.start || b.end - a.end);
+  let covered = 0;
+
+  const matches: Match[] = [];
+  for (const range of ranges) {
+    if (range.start < covered) continue;
+    if (!(range.start >= 0 && range.end <= text.length)) continue;
+    let { start, end } = range;
+    // Line-break spaces have no character on the page to anchor a highlight to
+    while (start < end && !positions[start]) start++;
+    while (end > start && !positions[end - 1]) end--;
+    const first = positions[start];
+    const last = positions[end - 1];
+    if (!first || !last || end <= start) continue;
+    covered = range.end;
+
+    const isMultiDiv = first.idx !== last.idx;
+    const crossesLine = isMultiDiv && hasLineBreak(first.idx, last.idx);
+    matches.push({
+      start: { idx: first.idx, offset: first.offset },
+      end: { idx: last.idx, offset: last.offset + 1 },
+      str: text.slice(start, end),
+      index: start,
+      key: range.key,
+      keyword: range.keyword,
+      isMultiDivByLineBreak: crossesLine,
+      isMultiDivSameLine: isMultiDiv && !crossesLine,
+    });
+  }
+  return matches;
 }
 
-export { findMatches, highlightMatches, resetDivs, domHelpers };
+export { highlightMatches, matchesFromMatcher };

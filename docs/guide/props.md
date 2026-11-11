@@ -107,40 +107,57 @@ Enables text selection.
 <VuePDF :pdf="pdf" text-layer />
 ```
 
-## highlight-text  <badge type="tip" text="v1.9" vertical="middle" />
+## highlight-matcher  <badge type="tip" text="v2.0" vertical="middle" />
 
-Type: `string | string[]` <br />
+Type: `(text: string) => { start: number, end: number, keyword: string, key: string | number }[]` <br />
 Required: `false` <br />
 Default: `null`
 
-Highlight on the page the searched text or the searched array of text.
+Decides what to highlight on each page. It receives the page's text, with a space at each line break unless the line ends in a hyphen, and returns the ranges to highlight. Each highlight is a `<mark>` element with the range's `key` in `data-highlight-id`.
+
+If ranges overlap, the one that starts first is kept, and of ranges that start at the same place, the longest. The others are dropped.
 
 ```vue
-<VuePDF :pdf="pdf" text-layer hightlight-text="javascript" />
+<script setup>
+const highlightMatcher = (text) =>
+  [...text.matchAll(/javascript/gi)].map((match) => ({
+    start: match.index,
+    end: match.index + match[0].length,
+    keyword: 'javascript',
+    key: 'javascript',
+  }))
+</script>
 
-<VuePDF :pdf="pdf" text-layer :hightlight-text="['javascript', 'trace-based']" />
+<VuePDF :pdf="pdf" text-layer :highlight-matcher="highlightMatcher" />
 ```
 
-## highlight-options  <badge type="tip" text="v1.9" vertical="middle" />
-
-Type: `object` <br />
-Required: `false` <br />
-Default: 
-```
-{
-  completeWords: false,
-  ignoreCase: true
-}
-```
-
-Settings for how to find the [highlight-text](#highlight-text) on page's text.
+Highlights let the pointer through so text selection can start on them, which means `:hover` never applies to them. The highlight under the pointer gets `data-hovered` instead. Give highlights a class with `highlight-class` and style it:
 
 ```vue
-<VuePDF :pdf="pdf" text-layer hightlight-text="javascript" :highlight-options="{
-    completeWords: true,
-    ignoreCase: false
-  }"
+<VuePDF
+  :pdf="pdf"
+  text-layer
+  :highlight-matcher="highlightMatcher"
+  highlight-class="my-highlight"
 />
+```
+
+Highlights are `<mark>` elements, so a custom class needs its own background; otherwise the browser's opaque yellow covers the text.
+
+```css
+/* Translucent, because highlights sit on top of the text */
+.my-highlight {
+  background: rgb(255 235 59 / 0.4);
+}
+
+.my-highlight[data-hovered] {
+  background: rgb(255 165 0 / 0.4);
+}
+
+/* The text under a highlight sets the cursor */
+.textLayer:has(mark[data-hovered]) span {
+  cursor: pointer;
+}
 ```
 
 ## annotation-layer

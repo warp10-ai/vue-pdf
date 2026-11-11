@@ -97,7 +97,7 @@ Emitted when XFA page has finished to render.
 <VuePDF :pdf="pdf" @highlight="onHighlight" />
 ```
 
-Emitted when a text has been searched in page using [highlight-text](/guide/props.md#highlight-text) and [highlight-options](/guide/props.md#highlight-options), this event return a list of matches and the page where the text was found with its `textDivs` and `textContent`.
+Emitted when the page's highlights have been drawn from [highlight-matcher](/guide/props.md#highlight-matcher), this event return a list of matches and the page where the text was found with its `textDivs` and `textContent`.
 
 Check the example: [Highlight Event](/examples/text_events/text_highlight.md)
 

@@ -19,8 +19,8 @@ export interface Match {
   };
   str: string;
   index: number;
-  key?: string | number;
-  keyword?: string;
+  key: string | number;
+  keyword: string;
   isMultiDivByLineBreak: boolean;
   isMultiDivSameLine: boolean;
 }
@@ -32,6 +32,12 @@ export interface HighlightHoverPayload {
   position: {
     x: number;
     y: number;
+  };
+  rect: {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
   };
   pageNumber: number;
 }
@@ -54,7 +60,6 @@ export interface HighlightClickPayload {
   text: string;
   key: string | number;
   keyword: string;
-  isCurrentlyActive?: boolean;
   position: {
     x: number;
     y: number;
@@ -75,12 +80,14 @@ export interface WatermarkOptions {
   color?: string;
 }
 
-export interface HighlightOptions {
-  ignoreCase?: boolean;
-  completeWords?: boolean;
-  ignoreSpecialChars?: boolean;
-  customSpecialChars?: string[];
+export interface HighlightRange {
+  start: number;
+  end: number;
+  keyword: string;
+  key: string | number;
 }
+
+export type HighlightMatcher = (text: string) => HighlightRange[];
 
 export interface Base<T, S> {
   type: T;

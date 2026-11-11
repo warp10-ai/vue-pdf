@@ -20,7 +20,7 @@ import type {
   AnnotationEventPayload,
   HighlightEventPayload,
   HighlightHoverPayload,
-  HighlightOptions,
+  HighlightMatcher,
   LoadedEventPayload,
   TextLayerLoadedEventPayload,
   WatermarkOptions,
@@ -55,13 +55,8 @@ const props = withDefaults(
     annotationsMap?: object;
     watermarkText?: string;
     watermarkOptions?: WatermarkOptions;
-    highlightText?: string | string[];
-    activeHighlightText?: string | string[];
-    highlightOptions?: HighlightOptions;
-    highlightPages?: number[];
-    customHighlightClass?: string;
-    customActiveHighlightClass?: string;
-    activeHighlightTextColor?: string;
+    highlightMatcher?: HighlightMatcher;
+    highlightClass?: string;
   }>(),
   {
     page: 1,
@@ -107,13 +102,8 @@ const alayerProps = computed(() => {
 });
 const tlayerProps = computed(() => {
   return {
-    highlightText: props.highlightText,
-    activeHighlightText: props.activeHighlightText,
-    highlightOptions: props.highlightOptions,
-    highlightPages: props.highlightPages,
-    customHighlightClass: props.customHighlightClass,
-    activeHighlightTextColor: props.activeHighlightTextColor,
-    customActiveHighlightClass: props.customActiveHighlightClass,
+    highlightMatcher: props.highlightMatcher,
+    highlightClass: props.highlightClass,
   };
 });
 

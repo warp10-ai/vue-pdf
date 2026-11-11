@@ -1,30 +1,28 @@
 <script setup lang="ts">
 import * as PDFJS from "pdfjs-dist";
-import { onMounted, ref, watch } from "vue";
+import { computed, ref, shallowRef, watch } from "vue";
 
 import type { PDFPageProxy, PageViewport } from "pdfjs-dist";
+import type { TextContent } from "pdfjs-dist/types/src/display/api";
 import type {
   HighlightClickPayload,
   HighlightEventPayload,
   HighlightHoverPayload,
-  HighlightOptions,
+  HighlightMatcher,
   TextLayerLoadedEventPayload,
 } from "../types";
-import { findMatches, highlightMatches, resetDivs } from "../utils/highlight";
+import { getGlyphs, screenScale, type PageGlyph } from "../utils/glyphs";
+import {
+  highlightMatches,
+  matchesFromMatcher,
+  type DrawnHighlight,
+} from "../utils/highlight";
 
 const props = defineProps<{
   page?: PDFPageProxy;
   viewport?: PageViewport;
-  highlightText?:
-    | string
-    | string[]
-    | Array<{ keyword: string; key: string | number }>;
-  activeHighlightText?: string | string[];
-  highlightOptions?: HighlightOptions;
-  highlightPages?: number[];
-  customHighlightClass?: string;
-  activeHighlightTextColor?: string;
-  customActiveHighlightClass?: string;
+  highlightMatcher?: HighlightMatcher;
+  highlightClass?: string;
 }>();
 
 const emit = defineEmits<{
@@ -36,183 +34,195 @@ const emit = defineEmits<{
 }>();
 
 const layer = ref<HTMLDivElement>();
-const endContent = ref<HTMLDivElement>();
-let textDivs: HTMLElement[] = [];
+const layerWidth = ref(0);
+const renderedText = shallowRef<{
+  page: PDFPageProxy;
+  viewport: PageViewport;
+  textDivs: HTMLElement[];
+}>();
+const highlightSource = shallowRef<{
+  page: PDFPageProxy;
+  textContent: TextContent;
+  glyphs: PageGlyph[];
+}>();
 
-watch(
-  () => props.activeHighlightText,
-  () => {
-    findAndHighlight(true);
-  }
-);
+const pageMatches = computed(() => {
+  const source = highlightSource.value;
+  const matcher = props.highlightMatcher;
+  if (!source || !matcher) return null;
+  return matchesFromMatcher(matcher, source.textContent);
+});
 
-function getHighlightOptionsWithDefaults(): HighlightOptions {
-  return Object.assign(
-    {},
-    {
-      ignoreCase: true,
-      completeWords: false,
-      ignoreSpecialChars: false,
-    },
-    props.highlightOptions
+let highlights: DrawnHighlight[] = [];
+
+function drawHighlights() {
+  const text = renderedText.value;
+  const source = highlightSource.value;
+  const matches = pageMatches.value;
+  const container = layer.value;
+
+  clearHover();
+  highlights.forEach(({ element }) => element.remove());
+  highlights = [];
+  if (!text || !container) return;
+  if (!matches || source?.page !== text.page) return;
+
+  highlights = highlightMatches(
+    matches,
+    source.textContent,
+    text.textDivs,
+    props.highlightClass || "highlight",
+    { glyphs: source.glyphs, layer: container, viewport: text.viewport },
   );
-}
 
-function normalizeHighlightText(
-  highlight:
-    | string
-    | string[]
-    | Array<{ keyword: string; key: string | number }>
-) {
-  if (!highlight) return [];
-  if (typeof highlight === "string") return [highlight];
-  return highlight;
-}
-
-async function findAndHighlight(reset = false) {
-  const page = props.page;
-  const textContent = await page?.getTextContent();
-
-  if (!textContent) return;
-
-  if (reset) resetDivs(textContent, textDivs);
-
-  if (
-    props.highlightText &&
-    page &&
-    (!props.highlightPages || props.highlightPages.includes(page.pageNumber))
-  ) {
-    const normalizedHighlights = normalizeHighlightText(props.highlightText);
-    const matches = findMatches(
-      normalizedHighlights,
-      textContent,
-      getHighlightOptionsWithDefaults()
-    );
-
-    highlightMatches(
-      matches,
-      textContent,
-      textDivs,
-      props.customHighlightClass || "highlight",
-      props.activeHighlightTextColor,
-      props.customActiveHighlightClass,
-      props.activeHighlightText,
-      handleHighlightClick,
-      handleHighlightMouseEnter,
-      handleHighlightMouseLeave
-    );
-
-    emit("highlight", {
-      matches,
-      textContent,
-      textDivs,
-      page: page?.pageNumber || 1,
-    });
-  }
-}
-
-function render() {
-  layer.value!.replaceChildren?.();
-
-  const page = props.page;
-  const viewport = props.viewport;
-  const textStream = page?.streamTextContent({
-    includeMarkedContent: true,
-    disableNormalization: true,
-  });
-  const textLayer = new PDFJS.TextLayer({
-    container: layer.value!,
-    textContentSource: textStream!,
-    viewport: viewport!,
-  });
-  textLayer.render().then(async () => {
-    textDivs = textLayer.textDivs;
-    const textContent = await page?.getTextContent();
-    emit("textLoaded", { textDivs, textContent });
-    const endOfContent = document.createElement("div");
-    endOfContent.className = "endOfContent";
-    layer.value?.appendChild(endOfContent);
-    endContent.value = endOfContent;
-    findAndHighlight();
+  emit("highlight", {
+    matches,
+    textContent: source.textContent,
+    textDivs: text.textDivs,
+    page: source.page.pageNumber,
   });
 }
 
-function handleHighlightClick(
-  event: MouseEvent,
-  text: string,
-  key: string | number,
-  keyword: string,
-  isCurrentlyActive?: boolean
-) {
-  const element = event.currentTarget as HTMLElement;
+function highlightAt(event: MouseEvent) {
+  const container = layer.value;
+  if (!container) return;
+  const rect = container.getBoundingClientRect();
+  const scale = screenScale(container);
+  const x = (event.clientX - rect.left) / scale.x;
+  const y = (event.clientY - rect.top) / scale.y;
+  return highlights.find(({ box }) => {
+    return x >= box.left && x <= box.right && y >= box.top && y <= box.bottom;
+  });
+}
+
+function describeHighlight({ element, text, key, keyword }: DrawnHighlight) {
   const rect = element.getBoundingClientRect();
-
-  emit("highlightClick", {
+  return {
     text,
     key,
     keyword,
-    isCurrentlyActive,
-    position: {
-      x: rect.left + rect.width / 2,
-      y: rect.top,
-    },
+    position: { x: rect.left + rect.width / 2, y: rect.top },
     pageNumber: props.page?.pageNumber || 1,
-  });
+  };
 }
 
-function handleHighlightMouseEnter(
-  event: MouseEvent,
-  text: string,
-  key: string | number,
-  keyword: string
-) {
-  const element = event.currentTarget as HTMLElement;
-  const rect = element.getBoundingClientRect();
+let hovered: DrawnHighlight | undefined;
 
+function setHovered(highlight: DrawnHighlight | undefined) {
+  hovered?.element.removeAttribute("data-hovered");
+  highlight?.element.setAttribute("data-hovered", "");
+  hovered = highlight;
+}
+
+function onMouseMove(event: MouseEvent) {
+  const highlight = highlightAt(event);
+  if (highlight === hovered) return;
+  if (hovered) emit("highlightLeave");
+  setHovered(highlight);
+  if (!highlight) return;
+  const { element } = highlight;
+  const { left, top, width, height } = element.getBoundingClientRect();
   emit("highlightHover", {
-    text,
-    key,
-    keyword,
-    position: {
-      x: rect.left + rect.width / 2,
-      y: rect.top,
-    },
-    pageNumber: props.page?.pageNumber || 1,
+    ...describeHighlight(highlight),
+    rect: { left, top, width, height },
   });
 }
 
-function handleHighlightMouseLeave() {
+function clearHover() {
+  if (!hovered) return;
+  setHovered(undefined);
   emit("highlightLeave");
 }
 
+function onClick(event: MouseEvent) {
+  if (!document.getSelection()?.isCollapsed) return;
+  const highlight = highlightAt(event);
+  if (highlight) emit("highlightClick", describeHighlight(highlight));
+}
+
 function onMouseDown() {
-  if (!endContent.value) return;
-  endContent.value.classList.add("active");
-}
-
-function onMouseUp() {
-  if (!endContent.value) return;
-  endContent.value.classList.remove("active");
+  const container = layer.value;
+  if (!container) return;
+  container.classList.add("selecting");
+  document.addEventListener(
+    "mouseup",
+    () => container.classList.remove("selecting"),
+    { once: true },
+  );
 }
 
 watch(
-  () => props.viewport,
-  (_) => {
-    if (props.page && props.viewport && layer.value) render();
-  }
-);
+  [() => props.page, () => props.viewport, layer],
+  ([page, viewport, container], _, onCleanup) => {
+    if (!page || !viewport || !container) return;
+    let cancelled = false;
+    renderedText.value = undefined;
+    container.replaceChildren();
 
-watch(
-  () => [props.highlightText, props.highlightOptions],
-  (_) => {
-    findAndHighlight(true);
+    const textLayer = new PDFJS.TextLayer({
+      container,
+      textContentSource: page.streamTextContent({
+        includeMarkedContent: true,
+        disableNormalization: true,
+      }),
+      viewport,
+    });
+    onCleanup(() => {
+      cancelled = true;
+      textLayer.cancel();
+    });
+
+    const textContent = page.getTextContent({ disableNormalization: true });
+    textLayer
+      .render()
+      .then(async () => {
+        if (cancelled) return;
+        const textDivs = textLayer.textDivs;
+        const endOfContent = document.createElement("div");
+        endOfContent.className = "endOfContent";
+        container.appendChild(endOfContent);
+        renderedText.value = { page, viewport, textDivs };
+        const loaded = await textContent;
+        if (!cancelled) emit("textLoaded", { textDivs, textContent: loaded });
+      })
+      .catch((error) => {
+        if (!cancelled) throw error;
+      });
   },
-  { deep: true }
+  { flush: "post" },
 );
 
-onMounted(() => {
-  if (props.page && props.viewport && layer.value) render();
+watch(
+  [() => props.page, () => !!props.highlightMatcher],
+  async ([page, highlighting], _, onCleanup) => {
+    highlightSource.value = undefined;
+    if (!page || !highlighting) return;
+    let cancelled = false;
+    onCleanup(() => (cancelled = true));
+
+    const [textContent, glyphs] = await Promise.all([
+      page.getTextContent({ disableNormalization: true }),
+      getGlyphs(page),
+    ]);
+    if (!cancelled) highlightSource.value = { page, textContent, glyphs };
+  },
+  { immediate: true },
+);
+
+watch(layer, (element, _, onCleanup) => {
+  if (!element) return;
+  const observer = new ResizeObserver(([entry]) => {
+    layerWidth.value = entry.contentRect.width;
+  });
+  observer.observe(element);
+  onCleanup(() => observer.disconnect());
 });
+
+watch(
+  [renderedText, pageMatches, layerWidth, () => props.highlightClass],
+  drawHighlights,
+  { flush: "post" },
+);
 </script>
 
 <template>
@@ -221,6 +231,8 @@ onMounted(() => {
     class="textLayer"
     style="display: block"
     @mousedown="onMouseDown"
-    @mouseup="onMouseUp"
+    @mousemove="onMouseMove"
+    @mouseleave="clearHover"
+    @click="onClick"
   />
 </template>
