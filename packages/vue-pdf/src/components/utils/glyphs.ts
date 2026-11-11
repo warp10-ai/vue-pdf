@@ -53,6 +53,11 @@ export const getGlyphs = (page: PDFPageProxy): Promise<PageGlyph[]> => {
   return extractGlyphs(page).catch(() => []);
 };
 
+export function screenScale(element: HTMLElement): number {
+  if (!element.offsetWidth) return 1;
+  return element.getBoundingClientRect().width / element.offsetWidth;
+}
+
 export function snapToGlyphs(
   glyphLayer: GlyphLayer,
   container: HTMLElement,
@@ -65,9 +70,10 @@ export function snapToGlyphs(
   const layerRect = glyphLayer.layer.getBoundingClientRect();
   const containerRect = container.getBoundingClientRect();
   if (!glyphLayer.viewport.width || !layerRect.width) return null;
-  const ratio = layerRect.width / glyphLayer.viewport.width;
-  const offsetX = layerRect.left - containerRect.left;
-  const offsetY = layerRect.top - containerRect.top;
+  const scale = screenScale(glyphLayer.layer);
+  const ratio = layerRect.width / scale / glyphLayer.viewport.width;
+  const offsetX = (layerRect.left - containerRect.left) / scale;
+  const offsetY = (layerRect.top - containerRect.top) / scale;
 
   const toContainer = (point: [number, number]) => {
     const [x, y] = glyphLayer.viewport.convertToViewportPoint(

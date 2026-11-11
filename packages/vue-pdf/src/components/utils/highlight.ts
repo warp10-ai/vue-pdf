@@ -1,7 +1,7 @@
 import type { TextItem } from "pdfjs-dist/types/src/display/api";
 import type { TextContent } from "pdfjs-dist/types/src/display/text_layer";
 import type { HighlightMatcher, Match } from "../types";
-import { snapToGlyphs, type GlyphLayer } from "./glyphs";
+import { screenScale, snapToGlyphs, type GlyphLayer } from "./glyphs";
 
 function measureText(div: HTMLElement, length: number): DOMRect {
   const range = document.createRange();
@@ -108,6 +108,8 @@ function highlightMatches(
   onHighlightMouseLeave?: () => void,
   glyphLayer?: GlyphLayer,
 ) {
+  const scale = glyphLayer ? screenScale(glyphLayer.layer) : 1;
+
   const renderOptions: HighlightRenderOptions = {
     customHighlightClass,
     eventHandlers: {
@@ -176,26 +178,27 @@ function highlightMatches(
         const rect = rects[i];
 
         // Calculate position relative to container
-        const y = rect.top - containerRect.top;
+        const y = (rect.top - containerRect.top) / scale;
+        const left = (rect.left - containerRect.left) / scale;
         let snapped: ReturnType<typeof snapToGlyphs> = null;
         if (glyphLayer && rects.length === 1) {
           snapped = snapToGlyphs(glyphLayer, container, content, {
-            left: rect.left - containerRect.left,
+            left,
             top: y,
-            width: rect.width,
-            height: rect.height,
+            width: rect.width / scale,
+            height: rect.height / scale,
           });
         }
         if (snapped && !snapped.visible) continue;
-        const x = snapped?.left ?? rect.left - containerRect.left;
-        const textWidth = snapped?.width ?? rect.width;
+        const x = snapped?.left ?? left;
+        const textWidth = snapped?.width ?? rect.width / scale;
 
         const styleProps = {
           position: "absolute",
           top: `${y}px`,
           left: `${x}px`,
           width: `${textWidth}px`,
-          height: `${rect.height}px`,
+          height: `${rect.height / scale}px`,
           pointerEvents: "all",
           zIndex: "1",
           whiteSpace: "nowrap",
@@ -256,15 +259,12 @@ function highlightMatches(
     let highlight = container.querySelector(`#${highlightId}`) as HTMLElement;
 
     if (!highlight) {
-      const startMeasure = measureText(startDiv, match.start.offset);
-
-      const endMeasure = measureText(endDiv, match.end.offset);
+      const start = measureText(startDiv, match.start.offset).width / scale;
+      const end = measureText(endDiv, match.end.offset).width / scale;
 
       // Calculate the total width for multi-div highlights
       const totalWidth =
-        endDiv.offsetLeft +
-        endMeasure.width -
-        (startDiv.offsetLeft + startMeasure.width);
+        endDiv.offsetLeft + end - (startDiv.offsetLeft + start);
 
       const highlightText = textContent.items
         .slice(match.start.idx, match.end.idx + 1)
@@ -279,7 +279,7 @@ function highlightMatches(
         })
         .join("");
 
-      const estimatedLeft = startDiv.offsetLeft + startMeasure.width;
+      const estimatedLeft = startDiv.offsetLeft + start;
       let snapped: ReturnType<typeof snapToGlyphs> = null;
       if (glyphLayer) {
         snapped = snapToGlyphs(glyphLayer, container, highlightText, {
