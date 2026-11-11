@@ -133,25 +133,21 @@ onMounted(() => {
 </template>
 
 <style>
+.custom-pdf-highlight,
+.custom-active-highlight {
+  border-radius: 0.1875rem;
+  color: inherit;
+}
+
 .custom-pdf-highlight {
-  background: linear-gradient(
-    90deg,
-    rgba(53, 184, 255, 0) 0%,
-    rgba(53, 184, 255, 0.8) 20%,
-    rgba(53, 184, 255, 0.8) 80%,
-    rgba(53, 184, 255, 0) 100%
-  );
-  cursor: pointer;
+  background: #d7b2ff80;
 }
 
 .custom-active-highlight {
-  background: linear-gradient(
-    90deg,
-    rgba(92, 21, 224, 0) 0%,
-    rgba(92, 21, 224, 0.3) 20%,
-    rgba(92, 21, 224, 0.3) 80%,
-    rgba(92, 21, 224, 0) 100%
-  );
+  background: #5c15e080;
+}
+
+.textLayer:has(mark[data-hovered]) span {
   cursor: pointer;
 }
 </style>
