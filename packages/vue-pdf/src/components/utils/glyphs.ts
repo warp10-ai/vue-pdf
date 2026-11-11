@@ -57,7 +57,7 @@ export function snapToGlyphs(
   glyphLayer: GlyphLayer,
   container: HTMLElement,
   text: string,
-  box: { left: number; top: number; width: number; height: number }
+  box: { left: number; top: number; width: number; height: number },
 ): { left: number; width: number; visible: boolean } | null {
   const target = normalizeText(text);
   if (!target || glyphLayer.viewport.rotation % 360 !== 0) return null;
@@ -72,7 +72,7 @@ export function snapToGlyphs(
   const toContainer = (point: [number, number]) => {
     const [x, y] = glyphLayer.viewport.convertToViewportPoint(
       point[0],
-      point[1]
+      point[1],
     );
     return [offsetX + x * ratio, offsetY + y * ratio];
   };
@@ -289,7 +289,7 @@ async function extractGlyphs(page: PDFPageProxy): Promise<PageGlyph[]> {
     const toPage = (x: number, rise = 0): [number, number] => {
       const point = Util.applyTransform(
         [state.x + x * textHScale, state.y + state.textRise + rise],
-        state.textMatrix
+        state.textMatrix,
       );
       return Util.applyTransform(point, state.ctm) as [number, number];
     };

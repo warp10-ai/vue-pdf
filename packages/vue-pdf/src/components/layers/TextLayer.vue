@@ -53,7 +53,7 @@ const highlightSource = shallowRef<{
 }>();
 
 const wantsHighlights = computed(
-  () => !!(props.highlightMatcher || props.highlightText)
+  () => !!(props.highlightMatcher || props.highlightText),
 );
 const usesMatcher = computed(() => !!props.highlightMatcher);
 
@@ -65,7 +65,7 @@ function getHighlightOptionsWithDefaults(): HighlightOptions {
       completeWords: false,
       ignoreSpecialChars: false,
     },
-    props.highlightOptions
+    props.highlightOptions,
   );
 }
 
@@ -73,7 +73,7 @@ function normalizeHighlightText(
   highlight?:
     | string
     | string[]
-    | Array<{ keyword: string; key: string | number }>
+    | Array<{ keyword: string; key: string | number }>,
 ) {
   if (!highlight) return [];
   if (typeof highlight === "string") return [highlight];
@@ -87,7 +87,7 @@ function getMatches(textContent: TextContent) {
   return findMatches(
     normalizeHighlightText(props.highlightText),
     textContent,
-    getHighlightOptionsWithDefaults()
+    getHighlightOptionsWithDefaults(),
   );
 }
 
@@ -115,7 +115,7 @@ function drawHighlights() {
     handleHighlightClick,
     handleHighlightMouseEnter,
     handleHighlightMouseLeave,
-    { glyphs: source.glyphs, layer: container, viewport: text.viewport }
+    { glyphs: source.glyphs, layer: container, viewport: text.viewport },
   );
 
   emit("highlight", {
@@ -130,7 +130,7 @@ function handleHighlightClick(
   event: MouseEvent,
   text: string,
   key: string | number,
-  keyword: string
+  keyword: string,
 ) {
   const element = event.currentTarget as HTMLElement;
   const rect = element.getBoundingClientRect();
@@ -151,7 +151,7 @@ function handleHighlightMouseEnter(
   event: MouseEvent,
   text: string,
   key: string | number,
-  keyword: string
+  keyword: string,
 ) {
   const element = event.currentTarget as HTMLElement;
   const rect = element.getBoundingClientRect();
@@ -185,7 +185,7 @@ function onMouseDown() {
   document.addEventListener(
     "mouseup",
     () => container.classList.remove("selecting"),
-    { once: true }
+    { once: true },
   );
 }
 
@@ -227,7 +227,7 @@ watch(
         if (!cancelled) throw error;
       });
   },
-  { flush: "post" }
+  { flush: "post" },
 );
 
 watch(
@@ -244,7 +244,7 @@ watch(
     ]);
     if (!cancelled) highlightSource.value = { page, textContent, glyphs };
   },
-  { immediate: true }
+  { immediate: true },
 );
 
 watch(
@@ -258,7 +258,7 @@ watch(
     () => props.customHighlightClass,
   ],
   drawHighlights,
-  { flush: "post" }
+  { flush: "post" },
 );
 </script>
 

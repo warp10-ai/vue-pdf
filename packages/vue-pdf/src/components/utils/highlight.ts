@@ -57,7 +57,7 @@ function removeSpecialChars(text: string, customChars?: string[]): string {
       `[${customChars
         .map((char) => char.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
         .join("")}]`,
-      "g"
+      "g",
     );
     result = result.replace(customRegex, "");
   }
@@ -68,7 +68,7 @@ function removeSpecialChars(text: string, customChars?: string[]): string {
 function searchQuery(
   textContent: TextContent,
   query: string,
-  options: HighlightOptions
+  options: HighlightOptions,
 ): Array<[number, number, string]> {
   const strs = [];
   for (const textItem of textContent.items as TextItem[]) {
@@ -115,7 +115,7 @@ function searchQuery(
 
   // Normalize query words
   const normalizedQueryWords = queryWords.map((word) =>
-    removeSpecialChars(word, options.customSpecialChars)
+    removeSpecialChars(word, options.customSpecialChars),
   );
 
   const matches: Array<[number, number, string]> = [];
@@ -131,7 +131,7 @@ function searchQuery(
       const textWord = textWords[i + j];
       const normalizedTextWord = removeSpecialChars(
         textWord,
-        options.customSpecialChars
+        options.customSpecialChars,
       );
       const queryWord = normalizedQueryWords[j];
 
@@ -146,7 +146,7 @@ function searchQuery(
       const textClean = textWordToCompare.replace(/[\u201C\u201D(),."'`]/g, "");
       const queryClean = queryWordToCompare.replace(
         /[\u201C\u201D(),."'`]/g,
-        ""
+        "",
       );
 
       // Check for exact match or partial match within hyphenated words
@@ -191,7 +191,7 @@ function searchQuery(
         const textWord = textWords[i + j];
         const normalizedTextWord = removeSpecialChars(
           textWord,
-          options.customSpecialChars
+          options.customSpecialChars,
         );
         const queryWord = normalizedQueryWords[j];
 
@@ -205,11 +205,11 @@ function searchQuery(
         // Fix: Use proper Unicode characters for curly quotes - use Unicode escape sequences
         const textClean = textWordToCompare.replace(
           /[\u201C\u201D(),."'`]/g,
-          ""
+          "",
         );
         const queryClean = queryWordToCompare.replace(
           /[\u201D\u201C(),."'`]/g,
-          ""
+          "",
         );
 
         if (
@@ -250,7 +250,7 @@ function searchQuery(
 
 function convertMatches(
   matches: Array<[number, number, string]>,
-  textContent: TextContent
+  textContent: TextContent,
 ): Match[] {
   function endOfLineOffset(item: TextItem): number {
     if (item.hasEOL) {
@@ -331,13 +331,13 @@ interface HighlightEventHandlers {
     event: MouseEvent,
     text: string,
     key: string | number,
-    keyword: string
+    keyword: string,
   ) => void;
   onMouseEnter?: (
     event: MouseEvent,
     text: string,
     key: string | number,
-    keyword: string
+    keyword: string,
   ) => void;
   onMouseLeave?: () => void;
 }
@@ -352,7 +352,7 @@ function createHighlightElement(
   styleProps: Partial<CSSStyleDeclaration>,
   content: string,
   match: Match,
-  options: HighlightRenderOptions
+  options: HighlightRenderOptions,
 ): HTMLElement {
   const highlight = document.createElement("mark");
   highlight.id = id;
@@ -378,7 +378,7 @@ function createHighlightElement(
         event,
         content,
         match.key as string | number,
-        match.keyword as string
+        match.keyword as string,
       );
     });
   }
@@ -389,7 +389,7 @@ function createHighlightElement(
       event,
       content,
       match.key as string | number,
-      match.keyword as string
+      match.keyword as string,
     );
   });
 
@@ -410,16 +410,16 @@ function highlightMatches(
     event: MouseEvent,
     text: string,
     key: string | number,
-    keyword: string
+    keyword: string,
   ) => void,
   onHighlightMouseEnter?: (
     event: MouseEvent,
     text: string,
     key: string | number,
-    keyword: string
+    keyword: string,
   ) => void,
   onHighlightMouseLeave?: () => void,
-  glyphLayer?: GlyphLayer
+  glyphLayer?: GlyphLayer,
 ) {
   const renderOptions: HighlightRenderOptions = {
     customHighlightClass,
@@ -434,7 +434,7 @@ function highlightMatches(
     match: Match,
     idx: number,
     startOffset = -1,
-    endOffset = -1
+    endOffset = -1,
   ) {
     const textItem = textContent.items[idx] as TextItem;
     const currentDiv = textDivs[idx];
@@ -457,7 +457,7 @@ function highlightMatches(
 
     const highlightId = `highlight-${idx}-${startOffset}-${endOffset}`;
     const existingHighlights = container.querySelectorAll(
-      `[id^="${highlightId}"]`
+      `[id^="${highlightId}"]`,
     );
 
     if (existingHighlights.length === 0) {
@@ -474,7 +474,7 @@ function highlightMatches(
       range.setStart(textNode, startOffset >= 0 ? startOffset : 0);
       range.setEnd(
         textNode,
-        endOffset >= 0 ? endOffset : textNode.textContent?.length || 0
+        endOffset >= 0 ? endOffset : textNode.textContent?.length || 0,
       );
 
       // Get the bounding rectangles of the selection
@@ -519,7 +519,7 @@ function highlightMatches(
           styleProps,
           content,
           match,
-          renderOptions
+          renderOptions,
         );
 
         container.appendChild(highlightElement);
@@ -533,7 +533,7 @@ function highlightMatches(
   function highlightLine(
     match: Match,
     start: Match["start"],
-    end: Match["end"]
+    end: Match["end"],
   ) {
     const itemLength = (idx: number) => {
       const item = textContent.items[idx] as TextItem | undefined;
@@ -571,12 +571,12 @@ function highlightMatches(
     if (!highlight) {
       const startMeasure = domHelpers.getMeasurements(
         startDiv,
-        startItem.str.substring(0, match.start.offset)
+        startItem.str.substring(0, match.start.offset),
       );
 
       const endMeasure = domHelpers.getMeasurements(
         endDiv,
-        endItem.str.substring(0, match.end.offset)
+        endItem.str.substring(0, match.end.offset),
       );
 
       // Calculate the total width for multi-div highlights
@@ -626,7 +626,7 @@ function highlightMatches(
         styleProps,
         highlightText,
         match,
-        renderOptions
+        renderOptions,
       );
 
       container.appendChild(highlight);
@@ -640,7 +640,7 @@ function highlightMatches(
         match,
         match.start.idx,
         match.start.offset,
-        match.end.offset
+        match.end.offset,
       );
     } else if (match.isMultiDivByLineBreak) {
       let lineStart = match.start;
@@ -652,7 +652,7 @@ function highlightMatches(
         highlightLine(
           match,
           lineStart,
-          isLastItem ? match.end : { idx, offset: textItem.str.length }
+          isLastItem ? match.end : { idx, offset: textItem.str.length },
         );
         lineStart = { idx: idx + 1, offset: 0 };
       }
@@ -668,7 +668,7 @@ function highlightMatches(
 function findMatches(
   queries: string[] | Array<{ keyword: string; key: string | number }>,
   textContent: TextContent,
-  options: HighlightOptions
+  options: HighlightOptions,
 ): Match[] {
   // Sort queries by length (longest first)
   const normalizedQueries =
@@ -697,7 +697,7 @@ function findMatches(
         // Case 2 & 4: end is inside the existing range
         (end > range.start && end <= range.end) ||
         // Case 3: new range completely contains the existing range
-        (start <= range.start && end >= range.end)
+        (start <= range.start && end >= range.end),
     );
   }
 
@@ -731,7 +731,7 @@ function findMatches(
 
 function matchesFromMatcher(
   matcher: HighlightMatcher,
-  textContent: TextContent
+  textContent: TextContent,
 ): Match[] {
   const items = textContent.items as TextItem[];
   const positions: Array<{ idx: number; offset: number } | null> = [];
