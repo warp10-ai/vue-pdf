@@ -115,6 +115,8 @@ Default: `null`
 
 Decides what to highlight on each page. It receives the page's text, with a space at each line break unless the line ends in a hyphen, and returns the ranges to highlight. Each highlight is a `<mark>` element with the range's `key` in `data-highlight-id`.
 
+If ranges overlap, the one that starts first is kept, and of ranges that start at the same place, the longest. The others are dropped.
+
 ```vue
 <script setup>
 const highlightMatcher = (text) =>
