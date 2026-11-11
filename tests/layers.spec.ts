@@ -155,6 +155,32 @@ describe("Text Layer", () => {
       true,
     );
   });
+
+  test("Highlight once a hidden viewer is shown", async () => {
+    const host = document.createElement("div");
+    host.style.display = "none";
+    document.body.appendChild(host);
+    const matcher = (text: string) =>
+      [...text.matchAll(/dynamic/gi)].map((match) => ({
+        start: match.index!,
+        end: match.index! + match[0].length,
+        keyword: "dynamic",
+        key: "dynamic",
+      }));
+
+    const wrapper = mount(VuePDF, {
+      props: { pdf: pdf.value, textLayer: true, highlightMatcher: matcher },
+      attachTo: host,
+    });
+    await vi.waitUntil(() => wrapper.emitted("highlight"));
+    const drawn = wrapper.emitted("highlight")!.length;
+
+    host.style.display = "block";
+    await vi.waitUntil(() => wrapper.emitted("highlight")!.length > drawn);
+    expect(wrapper.findAll(".pdf-highlight").length).toBeGreaterThan(0);
+    wrapper.unmount();
+    host.remove();
+  });
 });
 
 describe("Annotation Layer", () => {

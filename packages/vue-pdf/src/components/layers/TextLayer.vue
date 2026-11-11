@@ -30,6 +30,7 @@ const emit = defineEmits<{
 }>();
 
 const layer = ref<HTMLDivElement>();
+const layerWidth = ref(0);
 const renderedText = shallowRef<{
   page: PDFPageProxy;
   viewport: PageViewport;
@@ -203,8 +204,17 @@ watch(
   { immediate: true },
 );
 
+watch(layer, (element, _, onCleanup) => {
+  if (!element) return;
+  const observer = new ResizeObserver(([entry]) => {
+    layerWidth.value = entry.contentRect.width;
+  });
+  observer.observe(element);
+  onCleanup(() => observer.disconnect());
+});
+
 watch(
-  [renderedText, pageMatches, () => props.customHighlightClass],
+  [renderedText, pageMatches, layerWidth, () => props.customHighlightClass],
   drawHighlights,
   { flush: "post" },
 );
