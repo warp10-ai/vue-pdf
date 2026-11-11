@@ -58,47 +58,78 @@ export function screenScale(element: HTMLElement): number {
   return element.getBoundingClientRect().width / element.offsetWidth;
 }
 
+interface PlacedGlyph {
+  text: string;
+  left: number;
+  right: number;
+  baseline: number;
+  visible: boolean;
+}
+
+export interface PlacedGlyphs {
+  glyphs: PlacedGlyph[];
+  layer: HTMLElement;
+  scale: number;
+}
+
+export function placeGlyphs(glyphLayer: GlyphLayer): PlacedGlyphs | null {
+  const { glyphs, layer, viewport } = glyphLayer;
+  const layerWidth = layer.getBoundingClientRect().width;
+  if (viewport.rotation % 360 !== 0 || !viewport.width || !layerWidth) {
+    return null;
+  }
+  const scale = screenScale(layer);
+  const ratio = layerWidth / scale / viewport.width;
+
+  const placed: PlacedGlyph[] = [];
+  for (const glyph of glyphs) {
+    const text = normalizeText(glyph.text);
+    if (!text) continue;
+    const [startX, baseline] = viewport.convertToViewportPoint(...glyph.start);
+    const [endX] = viewport.convertToViewportPoint(...glyph.end);
+    placed.push({
+      text,
+      left: Math.min(startX, endX) * ratio,
+      right: Math.max(startX, endX) * ratio,
+      baseline: baseline * ratio,
+      visible: glyph.visible,
+    });
+  }
+  placed.sort((a, b) => a.baseline - b.baseline);
+  return { glyphs: placed, layer, scale };
+}
+
 export function snapToGlyphs(
-  glyphLayer: GlyphLayer,
+  placed: PlacedGlyphs,
   container: HTMLElement,
   text: string,
   box: { left: number; top: number; width: number; height: number },
 ): { left: number; width: number; visible: boolean } | null {
   const target = normalizeText(text);
-  if (!target || glyphLayer.viewport.rotation % 360 !== 0) return null;
+  if (!target) return null;
 
-  const layerRect = glyphLayer.layer.getBoundingClientRect();
+  const layerRect = placed.layer.getBoundingClientRect();
   const containerRect = container.getBoundingClientRect();
-  if (!glyphLayer.viewport.width || !layerRect.width) return null;
-  const scale = screenScale(glyphLayer.layer);
-  const ratio = layerRect.width / scale / glyphLayer.viewport.width;
-  const offsetX = (layerRect.left - containerRect.left) / scale;
-  const offsetY = (layerRect.top - containerRect.top) / scale;
+  const offsetX = (layerRect.left - containerRect.left) / placed.scale;
+  const offsetY = (layerRect.top - containerRect.top) / placed.scale;
 
-  const toContainer = (point: [number, number]) => {
-    const [x, y] = glyphLayer.viewport.convertToViewportPoint(
-      point[0],
-      point[1],
-    );
-    return [offsetX + x * ratio, offsetY + y * ratio];
-  };
-
-  const lineTop = box.top - 1;
-  const lineBottom = box.top + box.height + 1;
-  const line = [];
-  for (const glyph of glyphLayer.glyphs) {
-    const [startX, baseline] = toContainer(glyph.start);
-    const [endX] = toContainer(glyph.end);
-    const text = normalizeText(glyph.text);
-    if (!text || baseline < lineTop || baseline > lineBottom) continue;
-    line.push({
-      text,
-      left: Math.min(startX, endX),
-      right: Math.max(startX, endX),
-      baseline,
-      visible: glyph.visible,
-    });
+  const lineTop = box.top - offsetY - 1;
+  const lineBottom = box.top + box.height - offsetY + 1;
+  const { glyphs } = placed;
+  let low = 0;
+  let high = glyphs.length;
+  while (low < high) {
+    const middle = (low + high) >> 1;
+    if (glyphs[middle].baseline < lineTop) low = middle + 1;
+    else high = middle;
   }
+  let end = low;
+  while (end < glyphs.length && glyphs[end].baseline <= lineBottom) end++;
+  const line = glyphs.slice(low, end).map((glyph) => ({
+    ...glyph,
+    left: glyph.left + offsetX,
+    right: glyph.right + offsetX,
+  }));
   line.sort((a, b) => a.left - b.left);
 
   let lineText = "";

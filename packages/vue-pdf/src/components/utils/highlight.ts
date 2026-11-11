@@ -1,7 +1,12 @@
 import type { TextItem } from "pdfjs-dist/types/src/display/api";
 import type { TextContent } from "pdfjs-dist/types/src/display/text_layer";
 import type { HighlightMatcher, Match } from "../types";
-import { screenScale, snapToGlyphs, type GlyphLayer } from "./glyphs";
+import {
+  placeGlyphs,
+  screenScale,
+  snapToGlyphs,
+  type GlyphLayer,
+} from "./glyphs";
 
 function measureText(div: HTMLElement, length: number): DOMRect {
   const range = document.createRange();
@@ -109,6 +114,7 @@ function highlightMatches(
   glyphLayer?: GlyphLayer,
 ) {
   const scale = glyphLayer ? screenScale(glyphLayer.layer) : 1;
+  const placed = glyphLayer ? placeGlyphs(glyphLayer) : null;
 
   const renderOptions: HighlightRenderOptions = {
     customHighlightClass,
@@ -172,8 +178,8 @@ function highlightMatches(
       const y = (rect.top - containerRect.top) / scale;
       const left = (rect.left - containerRect.left) / scale;
       let snapped: ReturnType<typeof snapToGlyphs> = null;
-      if (glyphLayer && rects.length === 1) {
-        snapped = snapToGlyphs(glyphLayer, container, content, {
+      if (placed && rects.length === 1) {
+        snapped = snapToGlyphs(placed, container, content, {
           left,
           top: y,
           width: rect.width / scale,
@@ -264,8 +270,8 @@ function highlightMatches(
 
     const estimatedLeft = startDiv.offsetLeft + start;
     let snapped: ReturnType<typeof snapToGlyphs> = null;
-    if (glyphLayer) {
-      snapped = snapToGlyphs(glyphLayer, container, highlightText, {
+    if (placed) {
+      snapped = snapToGlyphs(placed, container, highlightText, {
         left: estimatedLeft,
         top: startDiv.offsetTop,
         width: totalWidth,
