@@ -131,6 +131,19 @@ const highlightMatcher = (text) =>
 <VuePDF :pdf="pdf" text-layer :highlight-matcher="highlightMatcher" />
 ```
 
+Highlights let the pointer through so text selection can start on them, which means `:hover` never applies to them. The highlight under the pointer gets `data-hovered` instead:
+
+```css
+.my-highlight[data-hovered] {
+  background: orange;
+}
+
+/* The text under a highlight sets the cursor */
+.textLayer:has(mark[data-hovered]) span {
+  cursor: pointer;
+}
+```
+
 ## annotation-layer
 
 Type: `boolean` <br />
