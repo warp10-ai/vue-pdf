@@ -163,7 +163,10 @@ watch(
       textLayer.cancel();
     });
 
-    const textContent = page.getTextContent();
+    const textContent = page.getTextContent({
+      includeMarkedContent: true,
+      disableNormalization: true,
+    });
     textLayer
       .render()
       .then(async () => {
