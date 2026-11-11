@@ -11,7 +11,7 @@ import type {
   HighlightMatcher,
   TextLayerLoadedEventPayload,
 } from "../types";
-import { getGlyphs, type PageGlyph } from "../utils/glyphs";
+import { getGlyphs, screenScale, type PageGlyph } from "../utils/glyphs";
 import {
   highlightMatches,
   matchesFromMatcher,
@@ -84,14 +84,14 @@ function drawHighlights() {
 }
 
 function highlightAt(event: MouseEvent) {
-  return highlights.find(({ element }) => {
-    const rect = element.getBoundingClientRect();
-    return (
-      event.clientX >= rect.left &&
-      event.clientX <= rect.right &&
-      event.clientY >= rect.top &&
-      event.clientY <= rect.bottom
-    );
+  const container = layer.value;
+  if (!container) return;
+  const rect = container.getBoundingClientRect();
+  const scale = screenScale(container);
+  const x = (event.clientX - rect.left) / scale;
+  const y = (event.clientY - rect.top) / scale;
+  return highlights.find(({ box }) => {
+    return x >= box.left && x <= box.right && y >= box.top && y <= box.bottom;
   });
 }
 

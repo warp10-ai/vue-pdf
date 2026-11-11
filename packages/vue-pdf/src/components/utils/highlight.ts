@@ -13,6 +13,7 @@ export interface DrawnHighlight {
   text: string;
   key: string | number;
   keyword: string;
+  box: DOMRect;
 }
 
 function createHighlightElement(
@@ -45,6 +46,7 @@ function highlightMatches(
   const drawn: DrawnHighlight[] = [];
   const { layer } = glyphLayer;
   const scale = screenScale(layer);
+  const layerRect = layer.getBoundingClientRect();
   const placed = placeGlyphs(glyphLayer);
 
   function appendHighlightDiv(
@@ -111,13 +113,14 @@ function highlightMatches(
       if (snapped && !snapped.visible) continue;
       const x = snapped?.left ?? left;
       const textWidth = snapped?.width ?? rect.width / scale;
+      const height = rect.height / scale;
 
       const styleProps = {
         position: "absolute",
         top: `${y}px`,
         left: `${x}px`,
         width: `${textWidth}px`,
-        height: `${rect.height / scale}px`,
+        height: `${height}px`,
         pointerEvents: "none",
         zIndex: "1",
         whiteSpace: "nowrap",
@@ -137,6 +140,12 @@ function highlightMatches(
         text: content,
         key: match.key,
         keyword: match.keyword,
+        box: new DOMRect(
+          x + (containerRect.left - layerRect.left) / scale,
+          y + (containerRect.top - layerRect.top) / scale,
+          textWidth,
+          height,
+        ),
       });
     }
   }
@@ -181,7 +190,6 @@ function highlightMatches(
     range.setStart(startText, match.start.offset);
     range.setEnd(endText, match.end.offset);
     const rect = range.getBoundingClientRect();
-    const layerRect = layer.getBoundingClientRect();
     const left = (rect.left - layerRect.left) / scale;
     const right = (rect.right - layerRect.left) / scale;
     const top = (rect.top - layerRect.top) / scale;
@@ -210,13 +218,16 @@ function highlightMatches(
       });
     }
     if (snapped && !snapped.visible) return;
+    const x = snapped?.left ?? left;
+    const width = snapped?.width ?? right - left;
+    const box = new DOMRect(x, top, width, height);
 
     const styleProps = {
       position: "absolute",
-      top: `${top}px`,
-      left: `${snapped?.left ?? left}px`,
-      width: `${snapped?.width ?? right - left}px`,
-      height: `${height}px`,
+      top: `${box.top}px`,
+      left: `${box.left}px`,
+      width: `${box.width}px`,
+      height: `${box.height}px`,
       pointerEvents: "none",
       zIndex: "1",
       whiteSpace: "nowrap",
@@ -236,6 +247,7 @@ function highlightMatches(
       text: highlightText,
       key: match.key,
       keyword: match.keyword,
+      box,
     });
   }
 
