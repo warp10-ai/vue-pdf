@@ -22,7 +22,7 @@ const props = defineProps<{
   page?: PDFPageProxy;
   viewport?: PageViewport;
   highlightMatcher?: HighlightMatcher;
-  customHighlightClass?: string;
+  highlightClass?: string;
 }>();
 
 const emit = defineEmits<{
@@ -71,7 +71,7 @@ function drawHighlights() {
     matches,
     source.textContent,
     text.textDivs,
-    props.customHighlightClass || "highlight",
+    props.highlightClass || "highlight",
     { glyphs: source.glyphs, layer: container, viewport: text.viewport },
   );
 
@@ -219,7 +219,7 @@ watch(layer, (element, _, onCleanup) => {
 });
 
 watch(
-  [renderedText, pageMatches, layerWidth, () => props.customHighlightClass],
+  [renderedText, pageMatches, layerWidth, () => props.highlightClass],
   drawHighlights,
   { flush: "post" },
 );

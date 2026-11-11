@@ -19,10 +19,10 @@ export interface DrawnHighlight {
 function createHighlightElement(
   styleProps: Partial<CSSStyleDeclaration>,
   match: Match,
-  customHighlightClass: string,
+  highlightClass: string,
 ): HTMLElement {
   const highlight = document.createElement("mark");
-  highlight.className = `pdf-highlight ${customHighlightClass}`;
+  highlight.className = `pdf-highlight ${highlightClass}`;
 
   Object.assign(highlight.style, styleProps);
 
@@ -34,7 +34,7 @@ function highlightMatches(
   matches: Match[],
   textContent: TextContent,
   textDivs: HTMLElement[],
-  customHighlightClass: string,
+  highlightClass: string,
   glyphLayer: GlyphLayer,
 ): DrawnHighlight[] {
   const drawn: DrawnHighlight[] = [];
@@ -101,7 +101,7 @@ function highlightMatches(
       const highlightElement = createHighlightElement(
         styleProps,
         match,
-        customHighlightClass,
+        highlightClass,
       );
 
       layer.appendChild(highlightElement);
@@ -193,11 +193,7 @@ function highlightMatches(
       zIndex: "1",
     };
 
-    const highlight = createHighlightElement(
-      styleProps,
-      match,
-      customHighlightClass,
-    );
+    const highlight = createHighlightElement(styleProps, match, highlightClass);
 
     layer.appendChild(highlight);
     drawn.push({

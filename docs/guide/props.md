@@ -131,14 +131,14 @@ const highlightMatcher = (text) =>
 <VuePDF :pdf="pdf" text-layer :highlight-matcher="highlightMatcher" />
 ```
 
-Highlights let the pointer through so text selection can start on them, which means `:hover` never applies to them. The highlight under the pointer gets `data-hovered` instead. Give highlights a class with `custom-highlight-class` and style it:
+Highlights let the pointer through so text selection can start on them, which means `:hover` never applies to them. The highlight under the pointer gets `data-hovered` instead. Give highlights a class with `highlight-class` and style it:
 
 ```vue
 <VuePDF
   :pdf="pdf"
   text-layer
   :highlight-matcher="highlightMatcher"
-  custom-highlight-class="my-highlight"
+  highlight-class="my-highlight"
 />
 ```
 

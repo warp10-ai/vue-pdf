@@ -56,7 +56,7 @@ const props = withDefaults(
     watermarkText?: string;
     watermarkOptions?: WatermarkOptions;
     highlightMatcher?: HighlightMatcher;
-    customHighlightClass?: string;
+    highlightClass?: string;
   }>(),
   {
     page: 1,
@@ -103,7 +103,7 @@ const alayerProps = computed(() => {
 const tlayerProps = computed(() => {
   return {
     highlightMatcher: props.highlightMatcher,
-    customHighlightClass: props.customHighlightClass,
+    highlightClass: props.highlightClass,
   };
 });
 

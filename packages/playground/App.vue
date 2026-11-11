@@ -121,7 +121,7 @@ onMounted(() => {
         :page="page"
         text-layer
         :highlight-matcher="highlightMatcher"
-        custom-highlight-class="custom-pdf-highlight"
+        highlight-class="custom-pdf-highlight"
         :width="1000"
         @highlight-hover="handleHighlightHover"
         @highlight-leave="handleHighlightLeave"
