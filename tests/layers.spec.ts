@@ -4,7 +4,10 @@ import { mount } from "@vue/test-utils";
 import { ref } from "vue";
 
 import { VuePDF, usePDF } from "@warp10-ai/vue-pdf/src";
-import type { HighlightEventPayload } from "@warp10-ai/vue-pdf/src/components/types.ts";
+import type {
+  HighlightEventPayload,
+  TextLayerLoadedEventPayload,
+} from "@warp10-ai/vue-pdf/src/components/types.ts";
 
 import a14PDF from "@samples/14.pdf";
 import a45PDF from "@samples/45.pdf";
@@ -203,6 +206,12 @@ describe("Marked content", () => {
       attachTo: document.body,
     });
     await vi.waitUntil(() => wrapper.emitted("highlight"));
+    await vi.waitUntil(() => wrapper.emitted("textLoaded"));
+
+    const loaded = wrapper.emitted(
+      "textLoaded",
+    )![0][0] as TextLayerLoadedEventPayload;
+    expect(loaded.textContent?.items).toHaveLength(loaded.textDivs.length);
 
     const layer = wrapper.get("div.textLayer").element;
     const highlight = wrapper.get(".pdf-highlight").element;
