@@ -120,11 +120,9 @@ function onMouseMove(event: MouseEvent) {
   if (hovered) emit("highlightLeave");
   setHovered(highlight);
   if (!highlight) return;
-  const { element } = highlight;
-  const { left, top, width, height } = element.getBoundingClientRect();
   emit("highlightHover", {
     ...describeHighlight(highlight),
-    rect: { left, top, width, height },
+    rect: highlight.element.getBoundingClientRect(),
   });
 }
 

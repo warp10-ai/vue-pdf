@@ -33,12 +33,7 @@ export interface HighlightHoverPayload {
     x: number;
     y: number;
   };
-  rect: {
-    left: number;
-    top: number;
-    width: number;
-    height: number;
-  };
+  rect: DOMRectReadOnly;
   pageNumber: number;
 }
 
