@@ -60,11 +60,11 @@ function drawHighlights() {
   const source = highlightSource.value;
   const matches = pageMatches.value;
   const container = layer.value;
-  if (!text || !container) return;
 
   clearHover();
   highlights.forEach(({ element }) => element.remove());
   highlights = [];
+  if (!text || !container) return;
   if (!matches || source?.page !== text.page) return;
 
   highlights = highlightMatches(
