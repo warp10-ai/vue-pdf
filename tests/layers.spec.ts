@@ -209,6 +209,18 @@ describe("Marked content", () => {
     await vi.waitUntil(() => pdf.value, { timeout: 5000 });
   });
 
+  test("Leave no undefined ids on marked-content containers", async () => {
+    const wrapper = mount(VuePDF, {
+      props: { pdf: pdf.value, page: 18, textLayer: true },
+      attachTo: document.body,
+    });
+    await vi.waitUntil(() => wrapper.emitted("textLoaded"));
+
+    expect(wrapper.findAll(".markedContent").length).toBeGreaterThan(0);
+    expect(document.getElementById("undefined")).toBeNull();
+    wrapper.unmount();
+  });
+
   test("Highlight a match spanning marked-content containers", async () => {
     // On page 1, "MD" and ", PhD" sit in different marked-content containers,
     // and "Alessandra" comes earlier in the same container as "MD"

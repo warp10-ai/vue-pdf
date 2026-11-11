@@ -175,6 +175,9 @@ watch(
       .render()
       .then(async () => {
         if (cancelled) return;
+        for (const span of container.querySelectorAll('[id="undefined"]')) {
+          span.removeAttribute("id");
+        }
         const textDivs = textLayer.textDivs;
         const endOfContent = document.createElement("div");
         endOfContent.className = "endOfContent";
