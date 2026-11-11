@@ -64,7 +64,7 @@ function drawHighlights() {
   clearHover();
   highlights.forEach(({ element }) => element.remove());
   highlights = [];
-  if (!text || !container) return;
+  if (!text || !container || !container.offsetWidth) return;
   if (!matches || source?.page !== text.page) return;
 
   highlights = highlightMatches(
