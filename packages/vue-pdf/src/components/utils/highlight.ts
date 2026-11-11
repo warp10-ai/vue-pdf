@@ -145,10 +145,6 @@ function highlightMatches(
     if (!container) return;
 
     const highlightId = `highlight-${idx}-${startOffset}-${endOffset}`;
-    // Create a selection for the text
-    const selection = window.getSelection();
-    if (!selection) return;
-
     // Create a range for the text
     const range = document.createRange();
     const textNode = currentDiv.firstChild;
@@ -161,7 +157,7 @@ function highlightMatches(
       endOffset >= 0 ? endOffset : textNode.textContent?.length || 0,
     );
 
-    // Get the bounding rectangles of the selection
+    // Get the bounding rectangles of the range
     const rects = range.getClientRects();
     if (rects.length === 0) return;
 
@@ -209,9 +205,6 @@ function highlightMatches(
 
       container.appendChild(highlightElement);
     }
-
-    // Clear the selection
-    selection.removeAllRanges();
   }
 
   function highlightLine(
