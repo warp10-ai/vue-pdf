@@ -88,8 +88,8 @@ function highlightAt(event: MouseEvent) {
   if (!container) return;
   const rect = container.getBoundingClientRect();
   const scale = screenScale(container);
-  const x = (event.clientX - rect.left) / scale;
-  const y = (event.clientY - rect.top) / scale;
+  const x = (event.clientX - rect.left) / scale.x;
+  const y = (event.clientY - rect.top) / scale.y;
   return highlights.find(({ box }) => {
     return x >= box.left && x <= box.right && y >= box.top && y <= box.bottom;
   });

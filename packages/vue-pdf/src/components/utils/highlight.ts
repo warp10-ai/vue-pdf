@@ -72,21 +72,21 @@ function highlightMatches(
       const rect = rects[i];
 
       // Calculate position relative to the text layer
-      const y = (rect.top - layerRect.top) / scale;
-      const left = (rect.left - layerRect.left) / scale;
+      const y = (rect.top - layerRect.top) / scale.y;
+      const left = (rect.left - layerRect.left) / scale.x;
       let snapped: ReturnType<typeof snapToGlyphs> = null;
       if (placed && rects.length === 1) {
         snapped = snapToGlyphs(placed, content, {
           left,
           top: y,
-          width: rect.width / scale,
-          height: rect.height / scale,
+          width: rect.width / scale.x,
+          height: rect.height / scale.y,
         });
       }
       if (snapped && !snapped.visible) continue;
       const x = snapped?.left ?? left;
-      const textWidth = snapped?.width ?? rect.width / scale;
-      const height = rect.height / scale;
+      const textWidth = snapped?.width ?? rect.width / scale.x;
+      const height = rect.height / scale.y;
 
       const styleProps = {
         position: "absolute",
@@ -151,10 +151,10 @@ function highlightMatches(
     range.setStart(startText, match.start.offset);
     range.setEnd(endText, match.end.offset);
     const rect = range.getBoundingClientRect();
-    const left = (rect.left - layerRect.left) / scale;
-    const right = (rect.right - layerRect.left) / scale;
-    const top = (rect.top - layerRect.top) / scale;
-    const height = rect.height / scale;
+    const left = (rect.left - layerRect.left) / scale.x;
+    const right = (rect.right - layerRect.left) / scale.x;
+    const top = (rect.top - layerRect.top) / scale.y;
+    const height = rect.height / scale.y;
 
     const highlightText = textContent.items
       .slice(match.start.idx, match.end.idx + 1)

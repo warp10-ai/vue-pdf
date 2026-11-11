@@ -53,9 +53,12 @@ export const getGlyphs = (page: PDFPageProxy): Promise<PageGlyph[]> => {
   return extractGlyphs(page).catch(() => []);
 };
 
-export function screenScale(element: HTMLElement): number {
-  if (!element.offsetWidth) return 1;
-  return element.getBoundingClientRect().width / element.offsetWidth;
+export function screenScale(element: HTMLElement) {
+  const { width, height } = element.getBoundingClientRect();
+  return {
+    x: element.offsetWidth ? width / element.offsetWidth : 1,
+    y: element.offsetHeight ? height / element.offsetHeight : 1,
+  };
 }
 
 export interface PlacedGlyph {
@@ -73,7 +76,7 @@ export function placeGlyphs(glyphLayer: GlyphLayer): PlacedGlyph[] | null {
     return null;
   }
   const scale = screenScale(layer);
-  const ratio = layerWidth / scale / viewport.width;
+  const ratio = layerWidth / scale.x / viewport.width;
 
   const placed: PlacedGlyph[] = [];
   for (const glyph of glyphs) {
