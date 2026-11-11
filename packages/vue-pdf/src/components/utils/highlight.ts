@@ -56,7 +56,7 @@ function createHighlightElement(
 
   const { eventHandlers } = options;
 
-  if (eventHandlers?.onClick && match.key && match.keyword) {
+  if (eventHandlers?.onClick && match.key != null && match.keyword) {
     highlight.style.cursor = "pointer";
     highlight.addEventListener("click", (event) => {
       event.stopPropagation();
