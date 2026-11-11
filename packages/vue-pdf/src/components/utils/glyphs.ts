@@ -83,7 +83,8 @@ export function placeGlyphs(glyphLayer: GlyphLayer): PlacedGlyph[] | null {
     const text = normalizeText(glyph.text);
     if (!text) continue;
     const [startX, baseline] = viewport.convertToViewportPoint(...glyph.start);
-    const [endX] = viewport.convertToViewportPoint(...glyph.end);
+    const [endX, endY] = viewport.convertToViewportPoint(...glyph.end);
+    if (Math.abs(endY - baseline) > Math.abs(endX - startX)) continue;
     placed.push({
       text,
       left: Math.min(startX, endX) * ratio,
