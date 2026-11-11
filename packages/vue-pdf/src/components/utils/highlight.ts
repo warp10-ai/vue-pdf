@@ -3,29 +3,15 @@ import type { TextContent } from "pdfjs-dist/types/src/display/text_layer";
 import type { HighlightMatcher, Match } from "../types";
 import { snapToGlyphs, type GlyphLayer } from "./glyphs";
 
-// Cache management
-// ----------------
-const measurementsCache = new Map<string, DOMRect>();
-
-interface DOMHelpers {
-  getMeasurements(div: HTMLElement, text: string): DOMRect;
+function measureText(div: HTMLElement, length: number): DOMRect {
+  const range = document.createRange();
+  const text = div.firstChild;
+  if (text) {
+    range.setStart(text, 0);
+    range.setEnd(text, length);
+  }
+  return range.getBoundingClientRect();
 }
-
-const domHelpers: DOMHelpers = {
-  getMeasurements(div: HTMLElement, text: string): DOMRect {
-    const key = `${div.offsetTop}-${text}`;
-    if (!measurementsCache.has(key)) {
-      const measureDiv = document.createElement("span");
-      measureDiv.textContent = text;
-      measureDiv.style.visibility = "hidden";
-      div.appendChild(measureDiv);
-      const rect = measureDiv.getBoundingClientRect();
-      div.removeChild(measureDiv);
-      measurementsCache.set(key, rect);
-    }
-    return measurementsCache.get(key)!;
-  },
-};
 
 interface HighlightEventHandlers {
   onClick?: (
@@ -270,15 +256,9 @@ function highlightMatches(
     let highlight = container.querySelector(`#${highlightId}`) as HTMLElement;
 
     if (!highlight) {
-      const startMeasure = domHelpers.getMeasurements(
-        startDiv,
-        startItem.str.substring(0, match.start.offset),
-      );
+      const startMeasure = measureText(startDiv, match.start.offset);
 
-      const endMeasure = domHelpers.getMeasurements(
-        endDiv,
-        endItem.str.substring(0, match.end.offset),
-      );
+      const endMeasure = measureText(endDiv, match.end.offset);
 
       // Calculate the total width for multi-div highlights
       const totalWidth =
