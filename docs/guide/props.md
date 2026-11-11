@@ -107,40 +107,26 @@ Enables text selection.
 <VuePDF :pdf="pdf" text-layer />
 ```
 
-## highlight-text  <badge type="tip" text="v1.9" vertical="middle" />
+## highlight-matcher  <badge type="tip" text="v2.0" vertical="middle" />
 
-Type: `string | string[]` <br />
+Type: `(text: string) => { start: number, end: number, keyword: string, key: string | number }[]` <br />
 Required: `false` <br />
 Default: `null`
 
-Highlight on the page the searched text or the searched array of text.
+Decides what to highlight on each page. It receives the page's text, with a space at each line break unless the line ends in a hyphen, and returns the ranges to highlight. Each highlight is a `<mark>` element with the range's `key` in `data-highlight-id`.
 
 ```vue
-<VuePDF :pdf="pdf" text-layer hightlight-text="javascript" />
+<script setup>
+const highlightMatcher = (text) =>
+  [...text.matchAll(/javascript/gi)].map((match) => ({
+    start: match.index,
+    end: match.index + match[0].length,
+    keyword: 'javascript',
+    key: 'javascript',
+  }))
+</script>
 
-<VuePDF :pdf="pdf" text-layer :hightlight-text="['javascript', 'trace-based']" />
-```
-
-## highlight-options  <badge type="tip" text="v1.9" vertical="middle" />
-
-Type: `object` <br />
-Required: `false` <br />
-Default: 
-```
-{
-  completeWords: false,
-  ignoreCase: true
-}
-```
-
-Settings for how to find the [highlight-text](#highlight-text) on page's text.
-
-```vue
-<VuePDF :pdf="pdf" text-layer hightlight-text="javascript" :highlight-options="{
-    completeWords: true,
-    ignoreCase: false
-  }"
-/>
+<VuePDF :pdf="pdf" text-layer :highlight-matcher="highlightMatcher" />
 ```
 
 ## annotation-layer

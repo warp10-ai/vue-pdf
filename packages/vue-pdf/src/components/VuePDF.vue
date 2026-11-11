@@ -21,7 +21,6 @@ import type {
   HighlightEventPayload,
   HighlightHoverPayload,
   HighlightMatcher,
-  HighlightOptions,
   LoadedEventPayload,
   TextLayerLoadedEventPayload,
   WatermarkOptions,
@@ -56,8 +55,6 @@ const props = withDefaults(
     annotationsMap?: object;
     watermarkText?: string;
     watermarkOptions?: WatermarkOptions;
-    highlightText?: string | string[];
-    highlightOptions?: HighlightOptions;
     highlightMatcher?: HighlightMatcher;
     highlightPages?: number[];
     customHighlightClass?: string;
@@ -106,8 +103,6 @@ const alayerProps = computed(() => {
 });
 const tlayerProps = computed(() => {
   return {
-    highlightText: props.highlightText,
-    highlightOptions: props.highlightOptions,
     highlightMatcher: props.highlightMatcher,
     highlightPages: props.highlightPages,
     customHighlightClass: props.customHighlightClass,

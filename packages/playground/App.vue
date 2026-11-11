@@ -9,7 +9,7 @@ import joyson from "@samples/joyson.pdf";
 import ingmar from "@samples/ingmar.pdf";
 
 import { VuePDF, usePDF } from "@warp10-ai/vue-pdf";
-import { ref, onMounted, watch } from "vue";
+import { computed, ref, onMounted, watch } from "vue";
 
 const diPietroPdf = ref<any>(null);
 
@@ -53,14 +53,24 @@ const ingmarPdf = ref<any>(null);
 //     "calcitonin"  //true
 // ]);
 
-const highlightText = ref(["ifosfamide"]);
+const keywords = ref(["ifosfamide"]);
+
+const highlightMatcher = computed(() => {
+  const words = keywords.value;
+  return (text: string) =>
+    words.flatMap((keyword) =>
+      [...text.matchAll(new RegExp(`\\b${keyword}\\b`, "gi"))].map(
+        (match) => ({
+          start: match.index!,
+          end: match.index! + match[0].length,
+          keyword,
+          key: keyword,
+        })
+      )
+    );
+});
 
 const activeHighlightText = ref(["ifosfamide", "astrazeneca", "bms"]);
-const highlightOptions = ref({
-  completeWords: true,
-  ignoreCase: true,
-  ignoreSpecialChars: true,
-});
 
 const handleHighlightHover = (event: any) => {
   console.log("handleHighlightHover", event);
@@ -110,8 +120,7 @@ onMounted(() => {
         :pdf="ingmarPdf.pdf"
         :page="page"
         text-layer
-        :highlight-text="highlightText"
-        :highlightOptions="highlightOptions"
+        :highlight-matcher="highlightMatcher"
         custom-highlight-class="custom-pdf-highlight"
         :width="1000"
         @highlight-hover="handleHighlightHover"

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import * as PDFJS from "pdfjs-dist";
-import { computed, ref, shallowRef, watch } from "vue";
+import { ref, shallowRef, watch } from "vue";
 
 import type { PDFPageProxy, PageViewport } from "pdfjs-dist";
 import type { TextContent } from "pdfjs-dist/types/src/display/api";
@@ -9,24 +9,14 @@ import type {
   HighlightEventPayload,
   HighlightHoverPayload,
   HighlightMatcher,
-  HighlightOptions,
   TextLayerLoadedEventPayload,
 } from "../types";
 import { getGlyphs, type PageGlyph } from "../utils/glyphs";
-import {
-  findMatches,
-  highlightMatches,
-  matchesFromMatcher,
-} from "../utils/highlight";
+import { highlightMatches, matchesFromMatcher } from "../utils/highlight";
 
 const props = defineProps<{
   page?: PDFPageProxy;
   viewport?: PageViewport;
-  highlightText?:
-    | string
-    | string[]
-    | Array<{ keyword: string; key: string | number }>;
-  highlightOptions?: HighlightOptions;
   highlightMatcher?: HighlightMatcher;
   highlightPages?: number[];
   customHighlightClass?: string;
@@ -52,45 +42,6 @@ const highlightSource = shallowRef<{
   glyphs: PageGlyph[];
 }>();
 
-const wantsHighlights = computed(
-  () => !!(props.highlightMatcher || props.highlightText),
-);
-const usesMatcher = computed(() => !!props.highlightMatcher);
-
-function getHighlightOptionsWithDefaults(): HighlightOptions {
-  return Object.assign(
-    {},
-    {
-      ignoreCase: true,
-      completeWords: false,
-      ignoreSpecialChars: false,
-    },
-    props.highlightOptions,
-  );
-}
-
-function normalizeHighlightText(
-  highlight?:
-    | string
-    | string[]
-    | Array<{ keyword: string; key: string | number }>,
-) {
-  if (!highlight) return [];
-  if (typeof highlight === "string") return [highlight];
-  return highlight;
-}
-
-function getMatches(textContent: TextContent) {
-  if (props.highlightMatcher) {
-    return matchesFromMatcher(props.highlightMatcher, textContent);
-  }
-  return findMatches(
-    normalizeHighlightText(props.highlightText),
-    textContent,
-    getHighlightOptionsWithDefaults(),
-  );
-}
-
 function drawHighlights() {
   const text = renderedText.value;
   const source = highlightSource.value;
@@ -100,13 +51,14 @@ function drawHighlights() {
   container
     .querySelectorAll(".pdf-highlight")
     .forEach((highlight) => highlight.remove());
-  if (!wantsHighlights.value || source?.page !== text.page) return;
+  const matcher = props.highlightMatcher;
+  if (!matcher || source?.page !== text.page) return;
   const page = source.page;
   if (props.highlightPages && !props.highlightPages.includes(page.pageNumber)) {
     return;
   }
 
-  const matches = getMatches(source.textContent);
+  const matches = matchesFromMatcher(matcher, source.textContent);
   highlightMatches(
     matches,
     source.textContent,
@@ -231,15 +183,15 @@ watch(
 );
 
 watch(
-  [() => props.page, wantsHighlights, usesMatcher],
-  async ([page, wanted, matcher], _, onCleanup) => {
+  [() => props.page, () => !!props.highlightMatcher],
+  async ([page, highlighting], _, onCleanup) => {
     highlightSource.value = undefined;
-    if (!page || !wanted) return;
+    if (!page || !highlighting) return;
     let cancelled = false;
     onCleanup(() => (cancelled = true));
 
     const [textContent, glyphs] = await Promise.all([
-      page.getTextContent({ disableNormalization: matcher }),
+      page.getTextContent({ disableNormalization: true }),
       getGlyphs(page),
     ]);
     if (!cancelled) highlightSource.value = { page, textContent, glyphs };
@@ -251,8 +203,6 @@ watch(
   [
     renderedText,
     highlightSource,
-    () => props.highlightText,
-    () => props.highlightOptions,
     () => props.highlightMatcher,
     () => props.highlightPages,
     () => props.customHighlightClass,

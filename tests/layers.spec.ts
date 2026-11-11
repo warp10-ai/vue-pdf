@@ -39,61 +39,41 @@ describe("Text Layer", () => {
   });
 
   test("Highlight", async () => {
+    const matcherFor = (pattern: RegExp) => (text: string) =>
+      [...text.matchAll(pattern)].map((match) => ({
+        start: match.index!,
+        end: match.index! + match[0].length,
+        keyword: match[0],
+        key: match[0].toLowerCase(),
+      }));
+
     const wrapper = mount(VuePDF, {
       props: {
         pdf: pdf.value,
         textLayer: true,
-        highlightText: "dynamic",
-        highlightOptions: {
-          completeWords: false,
-          ignoreCase: true,
-        },
+        highlightMatcher: matcherFor(/dynamic/gi),
       },
     });
 
     expect(wrapper).toBeTruthy();
     await vi.waitUntil(() => wrapper.emitted("highlight"));
 
-    expect(wrapper.emitted("highlight")).toHaveLength(1);
+    const first = wrapper.emitted("highlight")![0][0] as HighlightEventPayload;
+    expect(first.textDivs).toHaveLength(182);
+    expect(first.matches).toHaveLength(11);
     expect(
-      (wrapper.emitted("highlight")![0][0]! as HighlightEventPayload).textDivs
-    ).toHaveLength(182);
-    expect(
-      (wrapper.emitted("highlight")![0][0]! as HighlightEventPayload).matches
-    ).toHaveLength(11);
+      first.matches.every((match) => match.str.toLowerCase() === "dynamic"),
+    ).toBe(true);
 
-    await wrapper.setProps({
-      highlightOptions: {
-        completeWords: true,
-        ignoreCase: true,
-      },
-    });
+    await wrapper.setProps({ highlightMatcher: matcherFor(/\bdynamic\b/gi) });
     await vi.waitUntil(() => wrapper.emitted("highlight")?.length === 2);
     expect(
-      (wrapper.emitted("highlight")![1][0]! as HighlightEventPayload).matches
+      (wrapper.emitted("highlight")![1][0] as HighlightEventPayload).matches,
     ).toHaveLength(8);
 
-    await wrapper.setProps({
-      highlightOptions: {
-        ignoreCase: false,
-        completeWords: true,
-      },
-    });
+    await wrapper.setProps({ highlightMatcher: () => [] });
     await vi.waitUntil(() => wrapper.emitted("highlight")?.length === 3);
-    expect(
-      (wrapper.emitted("highlight")![2][0]! as HighlightEventPayload).matches
-    ).toHaveLength(5);
-
-    await wrapper.setProps({
-      highlightOptions: {
-        ignoreCase: false,
-        completeWords: false,
-      },
-    });
-    await vi.waitUntil(() => wrapper.emitted("highlight")?.length === 4);
-    expect(
-      (wrapper.emitted("highlight")![3][0]! as HighlightEventPayload).matches
-    ).toHaveLength(8);
+    expect(wrapper.findAll(".pdf-highlight")).toHaveLength(0);
   });
 });
 

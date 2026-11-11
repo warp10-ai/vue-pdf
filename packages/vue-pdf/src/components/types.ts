@@ -89,13 +89,6 @@ export interface HighlightRange {
 
 export type HighlightMatcher = (text: string) => HighlightRange[];
 
-export interface HighlightOptions {
-  ignoreCase?: boolean;
-  completeWords?: boolean;
-  ignoreSpecialChars?: boolean;
-  customSpecialChars?: string[];
-}
-
 export interface Base<T, S> {
   type: T;
   spec: S;
