@@ -62,6 +62,7 @@ function drawHighlights() {
   const container = layer.value;
   if (!text || !container) return;
 
+  clearHover();
   highlights.forEach(({ element }) => element.remove());
   highlights = [];
   if (!matches || source?.page !== text.page) return;
@@ -127,7 +128,7 @@ function onMouseMove(event: MouseEvent) {
   });
 }
 
-function onMouseLeave() {
+function clearHover() {
   if (!hovered) return;
   setHovered(undefined);
   emit("highlightLeave");
@@ -231,7 +232,7 @@ watch(
     style="display: block"
     @mousedown="onMouseDown"
     @mousemove="onMouseMove"
-    @mouseleave="onMouseLeave"
+    @mouseleave="clearHover"
     @click="onClick"
   />
 </template>
