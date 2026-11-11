@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, test, vi } from "vitest";
 
-import { mount } from "@vue/test-utils";
+import { mount, type VueWrapper } from "@vue/test-utils";
 import { ref } from "vue";
 
 import { VuePDF, usePDF } from "@warp10-ai/vue-pdf/src";
@@ -13,6 +13,13 @@ import a14PDF from "@samples/14.pdf";
 import a45PDF from "@samples/45.pdf";
 import dipietroPDF from "@samples/dipietro.pdf";
 import xfaPDF from "@samples/xfa.pdf";
+
+const latestMatches = (wrapper: VueWrapper) => {
+  const emitted = wrapper.emitted("highlight") ?? [];
+  return (
+    (emitted.at(-1)?.[0] as HighlightEventPayload | undefined)?.matches ?? []
+  );
+};
 
 describe("Text Layer", () => {
   const { pdf } = usePDF(
@@ -58,6 +65,7 @@ describe("Text Layer", () => {
         textLayer: true,
         highlightMatcher: matcherFor(/dynamic/gi),
       },
+      attachTo: document.body,
     });
 
     expect(wrapper).toBeTruthy();
@@ -71,14 +79,12 @@ describe("Text Layer", () => {
     ).toBe(true);
 
     await wrapper.setProps({ highlightMatcher: matcherFor(/\bdynamic\b/gi) });
-    await vi.waitUntil(() => wrapper.emitted("highlight")?.length === 2);
-    expect(
-      (wrapper.emitted("highlight")![1][0] as HighlightEventPayload).matches,
-    ).toHaveLength(8);
+    await vi.waitUntil(() => latestMatches(wrapper).length === 8);
 
     await wrapper.setProps({ highlightMatcher: () => [] });
-    await vi.waitUntil(() => wrapper.emitted("highlight")?.length === 3);
+    await vi.waitUntil(() => latestMatches(wrapper).length === 0);
     expect(wrapper.findAll(".pdf-highlight")).toHaveLength(0);
+    wrapper.unmount();
   });
 
   test("Highlight edges at line breaks", async () => {
@@ -97,6 +103,7 @@ describe("Text Layer", () => {
 
     const wrapper = mount(VuePDF, {
       props: { pdf: pdf.value, textLayer: true, highlightMatcher: matcher },
+      attachTo: document.body,
     });
     await vi.waitUntil(() => wrapper.emitted("highlight"));
 
@@ -105,6 +112,7 @@ describe("Text Layer", () => {
     )![0][0] as HighlightEventPayload;
     expect(matches).toHaveLength(returned);
     expect(matches.every((match) => match.str.trim())).toBe(true);
+    wrapper.unmount();
   });
 
   test("Highlight overlapping results", async () => {
@@ -146,18 +154,17 @@ describe("Text Layer", () => {
 
     const wrapper = mount(VuePDF, {
       props: { pdf: pdf.value, textLayer: true, highlightMatcher: matcher },
+      attachTo: document.body,
     });
     await vi.waitUntil(() => wrapper.emitted("highlight"));
 
     query.value = "trace";
-    await vi.waitUntil(() => wrapper.emitted("highlight")?.length === 2);
-    const { matches } = wrapper.emitted(
-      "highlight",
-    )![1][0] as HighlightEventPayload;
-    expect(matches.length).toBeGreaterThan(0);
+    await vi.waitUntil(() => latestMatches(wrapper)[0]?.keyword === "trace");
+    const matches = latestMatches(wrapper);
     expect(matches.every((match) => match.str.toLowerCase() === "trace")).toBe(
       true,
     );
+    wrapper.unmount();
   });
 
   test("Highlight once a hidden viewer is shown", async () => {
@@ -176,12 +183,20 @@ describe("Text Layer", () => {
       props: { pdf: pdf.value, textLayer: true, highlightMatcher: matcher },
       attachTo: host,
     });
-    await vi.waitUntil(() => wrapper.emitted("highlight"));
-    const drawn = wrapper.emitted("highlight")!.length;
+    await vi.waitUntil(() => wrapper.emitted("textLoaded"));
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    expect(wrapper.emitted("highlight")).toBeUndefined();
+    expect(wrapper.findAll(".pdf-highlight")).toHaveLength(0);
 
     host.style.display = "block";
-    await vi.waitUntil(() => wrapper.emitted("highlight")!.length > drawn);
-    expect(wrapper.findAll(".pdf-highlight").length).toBeGreaterThan(0);
+    await vi.waitUntil(() => wrapper.emitted("highlight"));
+    const highlights = wrapper.findAll(".pdf-highlight");
+    expect(highlights.length).toBeGreaterThan(0);
+    for (const highlight of highlights) {
+      expect(highlight.element.getBoundingClientRect().width).toBeGreaterThan(
+        0,
+      );
+    }
     wrapper.unmount();
     host.remove();
   });
