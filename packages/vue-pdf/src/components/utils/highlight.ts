@@ -8,16 +8,6 @@ import {
   type GlyphLayer,
 } from "./glyphs";
 
-function measureText(div: HTMLElement, length: number): DOMRect {
-  const range = document.createRange();
-  const text = div.firstChild;
-  if (text) {
-    range.setStart(text, 0);
-    range.setEnd(text, length);
-  }
-  return range.getBoundingClientRect();
-}
-
 export interface DrawnHighlight {
   element: HTMLElement;
   text: string;
@@ -184,15 +174,18 @@ function highlightMatches(
     if (!startDiv || !endDiv || !startItem || !endItem) return;
 
     const highlightId = `highlight-${match.start.idx}-${match.start.offset}-${match.end.idx}-${match.end.offset}`;
+    const startText = startDiv.firstChild;
+    const endText = endDiv.firstChild;
+    if (!startText || !endText) return;
+    const range = document.createRange();
+    range.setStart(startText, match.start.offset);
+    range.setEnd(endText, match.end.offset);
+    const rect = range.getBoundingClientRect();
     const layerRect = layer.getBoundingClientRect();
-    const startRect = startDiv.getBoundingClientRect();
-    const endRect = endDiv.getBoundingClientRect();
-    const startWidth = measureText(startDiv, match.start.offset).width;
-    const endWidth = measureText(endDiv, match.end.offset).width;
-    const left = (startRect.left - layerRect.left + startWidth) / scale;
-    const right = (endRect.left - layerRect.left + endWidth) / scale;
-    const top = (startRect.top - layerRect.top) / scale;
-    const height = endRect.height / scale;
+    const left = (rect.left - layerRect.left) / scale;
+    const right = (rect.right - layerRect.left) / scale;
+    const top = (rect.top - layerRect.top) / scale;
+    const height = rect.height / scale;
 
     const highlightText = textContent.items
       .slice(match.start.idx, match.end.idx + 1)
