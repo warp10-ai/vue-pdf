@@ -41,7 +41,6 @@ const emit = defineEmits<{
 }>();
 
 const layer = ref<HTMLDivElement>();
-const endContent = ref<HTMLDivElement>();
 const renderedText = shallowRef<{
   page: PDFPageProxy;
   viewport: PageViewport;
@@ -180,13 +179,14 @@ function handleHighlightMouseLeave() {
 }
 
 function onMouseDown() {
-  if (!endContent.value) return;
-  endContent.value.classList.add("active");
-}
-
-function onMouseUp() {
-  if (!endContent.value) return;
-  endContent.value.classList.remove("active");
+  const container = layer.value;
+  if (!container) return;
+  container.classList.add("selecting");
+  document.addEventListener(
+    "mouseup",
+    () => container.classList.remove("selecting"),
+    { once: true }
+  );
 }
 
 watch(
@@ -219,7 +219,6 @@ watch(
         const endOfContent = document.createElement("div");
         endOfContent.className = "endOfContent";
         container.appendChild(endOfContent);
-        endContent.value = endOfContent;
         renderedText.value = { page, viewport, textDivs };
         const loaded = await textContent;
         if (!cancelled) emit("textLoaded", { textDivs, textContent: loaded });
@@ -269,6 +268,5 @@ watch(
     class="textLayer"
     style="display: block"
     @mousedown="onMouseDown"
-    @mouseup="onMouseUp"
   />
 </template>
